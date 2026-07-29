@@ -1,6 +1,11 @@
-from fastapi import FastAPI
+from typing import Annotated
+
+from fastapi import Depends, FastAPI
+from sqlalchemy import text
+from sqlalchemy.orm import Session
 
 from app.core.config import settings
+from app.database.session import get_db
 
 app = FastAPI(
     title=settings.app_name,
@@ -21,9 +26,15 @@ async def root() -> dict[str, str]:
 
 
 @app.get("/health")
-async def health_check() -> dict[str, str]:
+async def health_check(
+    db: Annotated[Session, Depends(get_db)],
+) -> dict[str, str]:
+    database_name, database_user = db.execute(text("SELECT current_database(), current_user")).one()
+
     return {
         "status": "healthy",
         "service": "nexus-one-backend",
         "environment": settings.environment,
+        "database": database_name,
+        "database_user": database_user,
     }
