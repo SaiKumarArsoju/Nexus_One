@@ -1,7 +1,7 @@
 # NEXUS ONE — Business Requirements
 
-Version: 1.0  
-Status: Planning  
+Version: 1.0
+Status: Planning
 Author: Sai Kumar Arsoju
 
 ---
