@@ -11,6 +11,7 @@ from app.models.mixins import TimestampMixin, UUIDPrimaryKeyMixin
 
 if TYPE_CHECKING:
     from app.models.factory import Factory
+    from app.models.machine import Machine
 
 
 class ProductionLine(UUIDPrimaryKeyMixin, TimestampMixin, Base):
@@ -28,4 +29,9 @@ class ProductionLine(UUIDPrimaryKeyMixin, TimestampMixin, Base):
 
     factory: Mapped[Factory] = relationship(
         back_populates="production_lines",
+    )
+
+    machines: Mapped[list[Machine]] = relationship(
+        back_populates="production_line",
+        cascade="all, delete-orphan",
     )
