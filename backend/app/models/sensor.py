@@ -12,6 +12,7 @@ from app.models.mixins import TimestampMixin, UUIDPrimaryKeyMixin
 
 if TYPE_CHECKING:
     from app.models.machine import Machine
+    from app.models.sensor_reading import SensorReading
 
 
 class Sensor(UUIDPrimaryKeyMixin, TimestampMixin, Base):
@@ -40,4 +41,8 @@ class Sensor(UUIDPrimaryKeyMixin, TimestampMixin, Base):
 
     machine: Mapped[Machine] = relationship(
         back_populates="sensors",
+    )
+    readings: Mapped[list[SensorReading]] = relationship(
+        back_populates="sensor",
+        cascade="all, delete-orphan",
     )
