@@ -4,6 +4,7 @@ from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
 from app.core.enums import SensorType
+from app.domain.machine_health import calculate_machine_health
 from app.repositories import MachineHealthRepository
 from app.schemas import MachineHealthResponse
 
@@ -31,8 +32,9 @@ class MachineHealthService:
             if reading is not None:
                 latest_values[sensor.sensor_type] = reading.value
 
+        health = calculate_machine_health(latest_values)
+
         warnings: list[str] = []
-        health_score = 100
 
         temperature = latest_values.get(SensorType.TEMPERATURE)
         pressure = latest_values.get(SensorType.PRESSURE)
@@ -42,32 +44,18 @@ class MachineHealthService:
 
         if temperature is not None and temperature > 90:
             warnings.append("High temperature detected")
-            health_score -= 20
 
         if pressure is not None and pressure > 7.5:
             warnings.append("High pressure detected")
-            health_score -= 15
 
         if vibration is not None and vibration > 0.4:
             warnings.append("High vibration detected")
-            health_score -= 25
 
         if rpm is not None and rpm > 2800:
             warnings.append("High RPM detected")
-            health_score -= 15
 
         if energy is not None and energy > 28:
             warnings.append("High energy consumption detected")
-            health_score -= 10
-
-        health_score = max(health_score, 0)
-
-        if health_score >= 85:
-            status = "HEALTHY"
-        elif health_score >= 60:
-            status = "WARNING"
-        else:
-            status = "CRITICAL"
 
         recommendation = (
             "Review the detected conditions and inspect the machine."
@@ -77,8 +65,8 @@ class MachineHealthService:
 
         return MachineHealthResponse(
             machine_name=machine.name,
-            status=status,
-            overall_health=health_score,
+            status=health.status,
+            overall_health=health.score,
             temperature=temperature,
             pressure=pressure,
             vibration=vibration,

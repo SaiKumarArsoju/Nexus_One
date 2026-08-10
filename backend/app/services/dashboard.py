@@ -2,7 +2,7 @@ from collections import defaultdict
 
 from sqlalchemy.orm import Session
 
-from app.core.enums import SensorType
+from app.domain.machine_health import calculate_machine_health
 from app.repositories import DashboardRepository
 from app.schemas import DashboardSummaryResponse
 
@@ -20,40 +20,17 @@ class DashboardService:
 
         machine_values: dict = defaultdict(dict)
 
-        for row in latest_readings:
-            machine_values[row.machine_id][row.sensor_type] = row.value
+        for reading in latest_readings:
+            machine_values[reading.machine_id][reading.sensor_type] = reading.value
 
         for values in machine_values.values():
-            health_score = 100
+            health = calculate_machine_health(values)
 
-            temperature = values.get(SensorType.TEMPERATURE)
-            pressure = values.get(SensorType.PRESSURE)
-            vibration = values.get(SensorType.VIBRATION)
-            rpm = values.get(SensorType.RPM)
-            energy = values.get(SensorType.ENERGY)
-
-            if temperature is not None and temperature > 90:
-                health_score -= 20
-
-            if pressure is not None and pressure > 7.5:
-                health_score -= 15
-
-            if vibration is not None and vibration > 0.4:
-                health_score -= 25
-
-            if rpm is not None and rpm > 2800:
-                health_score -= 15
-
-            if energy is not None and energy > 28:
-                health_score -= 10
-
-            health_score = max(health_score, 0)
-
-            if health_score >= 85:
+            if health.status == "HEALTHY":
                 healthy_machines += 1
-            elif health_score >= 60:
+            elif health.status == "WARNING":
                 warning_machines += 1
-            else:
+            elif health.status == "CRITICAL":
                 critical_machines += 1
 
         return DashboardSummaryResponse(
