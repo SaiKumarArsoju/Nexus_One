@@ -1,3 +1,4 @@
+from datetime import datetime
 from uuid import UUID
 
 from pydantic import BaseModel
@@ -25,3 +26,18 @@ class MachineDetailResponse(BaseModel):
     rpm: float | None
     energy: float | None
     warnings: list[str]
+
+
+class TelemetryTrendPoint(BaseModel):
+    recorded_at: datetime
+    value: float
+
+
+class MachineTrendsResponse(BaseModel):
+    machine_id: UUID
+    machine_name: str
+    temperature: list[TelemetryTrendPoint]
+    pressure: list[TelemetryTrendPoint]
+    vibration: list[TelemetryTrendPoint]
+    rpm: list[TelemetryTrendPoint]
+    energy: list[TelemetryTrendPoint]

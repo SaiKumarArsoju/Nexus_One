@@ -3,6 +3,8 @@ from app.schemas.health import MachineHealthResponse
 from app.schemas.machine import (
     MachineDetailResponse,
     MachineFleetItemResponse,
+    MachineTrendsResponse,
+    TelemetryTrendPoint,
 )
 from app.schemas.telemetry import TelemetryReadingResponse
 
@@ -12,4 +14,6 @@ __all__ = [
     "DashboardSummaryResponse",
     "MachineFleetItemResponse",
     "MachineDetailResponse",
+    "MachineTrendsResponse",
+    "TelemetryTrendPoint",
 ]

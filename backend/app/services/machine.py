@@ -5,7 +5,12 @@ from sqlalchemy.orm import Session
 from app.core.enums import SensorType
 from app.domain.machine_health import calculate_machine_health
 from app.repositories import MachineRepository
-from app.schemas import MachineDetailResponse, MachineFleetItemResponse
+from app.schemas import (
+    MachineDetailResponse,
+    MachineFleetItemResponse,
+    MachineTrendsResponse,
+    TelemetryTrendPoint,
+)
 
 
 class MachineService:
@@ -96,4 +101,41 @@ class MachineService:
             rpm=rpm,
             energy=energy,
             warnings=warnings,
+        )
+
+    def get_machine_trends(
+        self,
+        machine_id,
+    ) -> MachineTrendsResponse | None:
+        machines = self.repository.get_all_machines_with_lines()
+
+        machine = next(
+            (item for item in machines if item.id == machine_id),
+            None,
+        )
+
+        if machine is None:
+            return None
+
+        grouped = self.repository.get_machine_trends(machine_id)
+
+        def convert(sensor_type: SensorType) -> list[TelemetryTrendPoint]:
+            rows = grouped.get(sensor_type, [])
+
+            return [
+                TelemetryTrendPoint(
+                    recorded_at=row.recorded_at,
+                    value=row.value,
+                )
+                for row in reversed(rows)
+            ]
+
+        return MachineTrendsResponse(
+            machine_id=machine.id,
+            machine_name=machine.name,
+            temperature=convert(SensorType.TEMPERATURE),
+            pressure=convert(SensorType.PRESSURE),
+            vibration=convert(SensorType.VIBRATION),
+            rpm=convert(SensorType.RPM),
+            energy=convert(SensorType.ENERGY),
         )

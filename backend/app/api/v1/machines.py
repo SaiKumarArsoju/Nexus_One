@@ -5,7 +5,11 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.database.session import get_db
-from app.schemas import MachineDetailResponse, MachineFleetItemResponse
+from app.schemas import (
+    MachineDetailResponse,
+    MachineFleetItemResponse,
+    MachineTrendsResponse,
+)
 from app.services import MachineService
 
 router = APIRouter(prefix="/api/v1", tags=["Machines"])
@@ -38,3 +42,22 @@ def get_machine_detail(
         )
 
     return machine
+
+
+@router.get(
+    "/machines/{machine_id}/trends",
+    response_model=MachineTrendsResponse,
+)
+def get_machine_trends(
+    machine_id: UUID,
+    db: Annotated[Session, Depends(get_db)],
+) -> MachineTrendsResponse:
+    trends = MachineService(db).get_machine_trends(machine_id)
+
+    if trends is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Machine not found",
+        )
+
+    return trends
