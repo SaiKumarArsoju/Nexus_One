@@ -1,23 +1,21 @@
 from uuid import UUID
 
 from fastapi import HTTPException
-from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.models import Machine, Sensor, SensorReading
+from app.repositories import TelemetryRepository
 from app.schemas import TelemetryReadingResponse
 
 
 class TelemetryService:
     def __init__(self, db: Session) -> None:
-        self.db = db
+        self.repository = TelemetryRepository(db)
 
     def get_machine_telemetry(
         self,
         machine_id: UUID,
     ) -> list[TelemetryReadingResponse]:
-
-        machine = self.db.get(Machine, machine_id)
+        machine = self.repository.get_machine(machine_id)
 
         if machine is None:
             raise HTTPException(
@@ -25,22 +23,7 @@ class TelemetryService:
                 detail="Machine not found",
             )
 
-        statement = (
-            select(
-                SensorReading.sensor_id,
-                Sensor.name,
-                Sensor.sensor_type,
-                Sensor.unit,
-                SensorReading.value,
-                SensorReading.recorded_at,
-            )
-            .join(Sensor)
-            .where(Sensor.machine_id == machine_id)
-            .order_by(SensorReading.recorded_at.desc())
-            .limit(100)
-        )
-
-        rows = self.db.execute(statement).all()
+        rows = self.repository.get_machine_telemetry(machine_id)
 
         return [
             TelemetryReadingResponse(
