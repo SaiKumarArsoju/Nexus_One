@@ -4,6 +4,8 @@ from fastapi import Depends, FastAPI
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
+from app.api.v1.health import router as health_router
+from app.api.v1.telemetry import router as telemetry_router
 from app.core.config import settings
 from app.database.session import get_db
 
@@ -13,6 +15,8 @@ app = FastAPI(
     version=settings.app_version,
     debug=settings.debug,
 )
+app.include_router(telemetry_router)
+app.include_router(health_router)
 
 
 @app.get("/")
