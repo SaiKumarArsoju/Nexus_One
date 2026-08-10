@@ -42,4 +42,8 @@ class DashboardService:
             healthy_machines=healthy_machines,
             warning_machines=warning_machines,
             critical_machines=critical_machines,
+            active_alerts=self.repository.get_active_alerts_count(),
+            warning_alerts=self.repository.get_warning_alerts_count(),
+            critical_alerts=self.repository.get_critical_alerts_count(),
+            resolved_alerts=self.repository.get_resolved_alerts_count(),
         )

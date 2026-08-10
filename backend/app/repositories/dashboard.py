@@ -1,7 +1,16 @@
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from app.models import Factory, Machine, ProductionLine, Sensor, SensorReading
+from app.models import (
+    Alert,
+    AlertSeverity,
+    AlertStatus,
+    Factory,
+    Machine,
+    ProductionLine,
+    Sensor,
+    SensorReading,
+)
 
 
 class DashboardRepository:
@@ -51,3 +60,37 @@ class DashboardRepository:
         )
 
         return self.db.execute(statement).all()
+
+    def get_active_alerts_count(self) -> int:
+        statement = (
+            select(func.count()).select_from(Alert).where(Alert.status == AlertStatus.ACTIVE)
+        )
+        return self.db.scalar(statement) or 0
+
+    def get_warning_alerts_count(self) -> int:
+        statement = (
+            select(func.count())
+            .select_from(Alert)
+            .where(
+                Alert.status == AlertStatus.ACTIVE,
+                Alert.severity == AlertSeverity.WARNING,
+            )
+        )
+        return self.db.scalar(statement) or 0
+
+    def get_critical_alerts_count(self) -> int:
+        statement = (
+            select(func.count())
+            .select_from(Alert)
+            .where(
+                Alert.status == AlertStatus.ACTIVE,
+                Alert.severity == AlertSeverity.CRITICAL,
+            )
+        )
+        return self.db.scalar(statement) or 0
+
+    def get_resolved_alerts_count(self) -> int:
+        statement = (
+            select(func.count()).select_from(Alert).where(Alert.status == AlertStatus.RESOLVED)
+        )
+        return self.db.scalar(statement) or 0
