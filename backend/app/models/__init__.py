@@ -1,3 +1,4 @@
+from app.models.alert import Alert, AlertSeverity, AlertStatus
 from app.models.factory import Factory
 from app.models.machine import Machine
 from app.models.production_line import ProductionLine
@@ -10,4 +11,7 @@ __all__ = [
     "ProductionLine",
     "Sensor",
     "SensorReading",
+    "Alert",
+    "AlertSeverity",
+    "AlertStatus",
 ]

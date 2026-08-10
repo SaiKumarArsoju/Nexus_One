@@ -9,6 +9,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.enums import MachineStatus
 from app.database.base import Base
+from app.models.alert import Alert
 from app.models.mixins import TimestampMixin, UUIDPrimaryKeyMixin
 
 if TYPE_CHECKING:
@@ -59,6 +60,10 @@ class Machine(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         back_populates="machines",
     )
     sensors: Mapped[list[Sensor]] = relationship(
+        back_populates="machine",
+        cascade="all, delete-orphan",
+    )
+    alerts: Mapped[list[Alert]] = relationship(
         back_populates="machine",
         cascade="all, delete-orphan",
     )
