@@ -1,20 +1,19 @@
 from uuid import UUID
 
 from fastapi import HTTPException
-from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.enums import SensorType
-from app.models import Machine, Sensor, SensorReading
+from app.repositories import MachineHealthRepository
 from app.schemas import MachineHealthResponse
 
 
 class MachineHealthService:
     def __init__(self, db: Session) -> None:
-        self.db = db
+        self.repository = MachineHealthRepository(db)
 
     def get_health(self, machine_id: UUID) -> MachineHealthResponse:
-        machine = self.db.get(Machine, machine_id)
+        machine = self.repository.get_machine(machine_id)
 
         if machine is None:
             raise HTTPException(
@@ -22,17 +21,12 @@ class MachineHealthService:
                 detail="Machine not found",
             )
 
-        sensors = self.db.scalars(select(Sensor).where(Sensor.machine_id == machine_id)).all()
+        sensors = self.repository.get_machine_sensors(machine_id)
 
         latest_values: dict[SensorType, float] = {}
 
         for sensor in sensors:
-            reading = self.db.scalar(
-                select(SensorReading)
-                .where(SensorReading.sensor_id == sensor.id)
-                .order_by(SensorReading.recorded_at.desc())
-                .limit(1)
-            )
+            reading = self.repository.get_latest_reading(sensor.id)
 
             if reading is not None:
                 latest_values[sensor.sensor_type] = reading.value
