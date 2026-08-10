@@ -1,3 +1,4 @@
+from app.schemas.alert import AlertResponse
 from app.schemas.dashboard import DashboardSummaryResponse
 from app.schemas.health import MachineHealthResponse
 from app.schemas.machine import (
@@ -16,4 +17,5 @@ __all__ = [
     "MachineDetailResponse",
     "MachineTrendsResponse",
     "TelemetryTrendPoint",
+    "AlertResponse",
 ]

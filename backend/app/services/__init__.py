@@ -1,3 +1,4 @@
+from app.services.alert import AlertService
 from app.services.dashboard import DashboardService
 from app.services.machine import MachineService
 from app.services.machine_health import MachineHealthService
@@ -8,4 +9,5 @@ __all__ = [
     "TelemetryService",
     "DashboardService",
     "MachineService",
+    "AlertService",
 ]

@@ -1,0 +1,75 @@
+from uuid import UUID
+
+from sqlalchemy import select
+from sqlalchemy.orm import Session
+
+from app.models import Alert, AlertSeverity, AlertStatus, Machine
+
+
+class AlertRepository:
+    def __init__(self, db: Session) -> None:
+        self.db = db
+
+    def get_active_alerts(self):
+        statement = (
+            select(
+                Alert.id,
+                Alert.machine_id,
+                Machine.name.label("machine_name"),
+                Alert.severity,
+                Alert.status,
+                Alert.alert_type,
+                Alert.message,
+                Alert.created_at,
+            )
+            .join(Machine, Alert.machine_id == Machine.id)
+            .where(Alert.status == AlertStatus.ACTIVE)
+            .order_by(Alert.created_at.desc())
+        )
+
+        return self.db.execute(statement).all()
+
+    def get_active_alert(
+        self,
+        machine_id: UUID,
+        alert_type: str,
+    ) -> Alert | None:
+        statement = select(Alert).where(
+            Alert.machine_id == machine_id,
+            Alert.alert_type == alert_type,
+            Alert.status == AlertStatus.ACTIVE,
+        )
+
+        return self.db.scalar(statement)
+
+    def create_alert(
+        self,
+        machine_id: UUID,
+        severity: AlertSeverity,
+        alert_type: str,
+        message: str,
+    ) -> Alert:
+        alert = Alert(
+            machine_id=machine_id,
+            severity=severity,
+            status=AlertStatus.ACTIVE,
+            alert_type=alert_type,
+            message=message,
+        )
+
+        self.db.add(alert)
+        self.db.commit()
+        self.db.refresh(alert)
+
+        return alert
+
+    def resolve_alert(
+        self,
+        alert: Alert,
+    ) -> Alert:
+        alert.status = AlertStatus.RESOLVED
+
+        self.db.commit()
+        self.db.refresh(alert)
+
+        return alert
