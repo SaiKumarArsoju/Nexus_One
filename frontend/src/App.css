@@ -599,3 +599,151 @@ h1 {
     grid-template-columns: 1fr;
   }
 }
+
+.section-heading-row {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 20px;
+  margin-bottom: 16px;
+}
+
+.section-heading-row h2 {
+  margin: 0 0 4px;
+}
+
+.section-heading-row p {
+  margin: 0;
+  color: #64748b;
+  font-size: 13px;
+}
+
+.view-all-button {
+  padding: 9px 13px;
+  border: 1px solid #1e293b;
+  border-radius: 9px;
+  background: #111827;
+  color: #cbd5e1;
+  cursor: pointer;
+}
+
+.view-all-button:hover {
+  background: #172033;
+}
+
+.recent-alerts {
+  overflow: hidden;
+  border: 1px solid #1e293b;
+  border-radius: 14px;
+  background: #111827;
+}
+
+.recent-alert-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 15px 18px;
+  border-bottom: 1px solid #1e293b;
+  cursor: pointer;
+}
+
+.recent-alert-row:last-child {
+  border-bottom: 0;
+}
+
+.recent-alert-row:hover {
+  background: #172033;
+}
+
+.recent-alert-main {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.recent-alert-main strong {
+  font-size: 14px;
+}
+
+.recent-alert-main p {
+  margin: 4px 0 0;
+  color: #94a3b8;
+  font-size: 13px;
+}
+
+.recent-alert-meta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  color: #64748b;
+  font-size: 11px;
+}
+
+@media (max-width: 800px) {
+  .recent-alert-row {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .recent-alert-meta {
+    align-items: flex-start;
+  }
+
+  .section-heading-row {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
+
+
+.risk-machines-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 14px;
+}
+
+.risk-machine-card {
+  display: flex;
+  min-height: 150px;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 18px;
+  border: 1px solid #1e293b;
+  border-radius: 14px;
+  background: #111827;
+  cursor: pointer;
+}
+
+.risk-machine-card:hover {
+  background: #172033;
+}
+
+.risk-machine-card h3 {
+  margin: 14px 0 5px;
+  font-size: 15px;
+}
+
+.risk-machine-card p {
+  margin: 0;
+  color: #64748b;
+  font-size: 12px;
+}
+
+.risk-score {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.risk-score span {
+  color: #64748b;
+  font-size: 11px;
+}
+
+.risk-score strong {
+  margin-top: 4px;
+  font-size: 26px;
+}

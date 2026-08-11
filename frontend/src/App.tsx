@@ -259,6 +259,8 @@ function App() {
                 <DashboardPage
                   summary={summary}
                   error={error}
+                  alerts={alerts}
+                  machines={machines}
                   onMachinesShortcut={(status) => {
                     setMachineStatusShortcut(status);
                     navigate(`/machines?status=${status}`);
@@ -271,6 +273,9 @@ function App() {
                         ? "/alerts"
                         : `/alerts?severity=${severity}`,
                     );
+                  }}
+                  onAlertMachineClick={(machineId) => {
+                    navigate(`/machines/${machineId}`);
                   }}
                 />
               }
@@ -327,11 +332,17 @@ function DashboardPage({
   error,
   onMachinesShortcut,
   onAlertsShortcut,
+  alerts,
+  onAlertMachineClick,
+  machines,
 }: {
   summary: DashboardSummary | null;
   error: string;
   onMachinesShortcut: (status: string) => void;
   onAlertsShortcut: (severity: string) => void;
+  alerts: AlertItem[];
+  onAlertMachineClick: (machineId: string) => void;
+  machines: MachineFleetItem[];
 }) {
   if (error) {
     return <div className="status-message">Error: {error}</div>;
@@ -340,6 +351,18 @@ function DashboardPage({
   if (!summary) {
     return <div className="status-message">Loading NEXUS ONE...</div>;
   }
+
+  const recentAlerts = [...alerts]
+    .sort(
+      (a, b) =>
+        new Date(b.created_at).getTime() -
+        new Date(a.created_at).getTime(),
+    )
+    .slice(0, 6);
+
+const topRiskMachines = [...machines]
+  .sort((a, b) => a.health_score - b.health_score)
+  .slice(0, 5);
 
   return (
     <>
@@ -541,6 +564,99 @@ function DashboardPage({
           <MetricCard label="Resolved" value={summary.resolved_alerts} />
         </div>
       </section>
+
+<section className="section">
+  <div className="section-heading-row">
+    <div>
+      <h2>Recent Active Alerts</h2>
+      <p>Latest operational conditions requiring attention.</p>
+    </div>
+
+    <button
+      className="view-all-button"
+      onClick={() => onAlertsShortcut("ALL")}
+    >
+      View All Alerts
+    </button>
+  </div>
+
+  <div className="recent-alerts">
+    {recentAlerts.length === 0 ? (
+      <p className="no-warnings">No active alerts.</p>
+    ) : (
+      recentAlerts.map((alert) => (
+        <article
+          className="recent-alert-row"
+          key={alert.id}
+          onClick={() => onAlertMachineClick(alert.machine_id)}
+        >
+          <div className="recent-alert-main">
+            <span
+              className={`health-badge ${alert.severity.toLowerCase()}`}
+            >
+              {alert.severity}
+            </span>
+
+            <div>
+              <strong>{alert.machine_name}</strong>
+              <p>{alert.message}</p>
+            </div>
+          </div>
+
+          <div className="recent-alert-meta">
+            <span>{alert.alert_type.replaceAll("_", " ")}</span>
+            <time>
+              {new Date(alert.created_at).toLocaleString()}
+            </time>
+          </div>
+        </article>
+      ))
+    )}
+  </div>
+</section>
+
+<section className="section">
+  <div className="section-heading-row">
+    <div>
+      <h2>Top Risk Machines</h2>
+      <p>Machines with the lowest current health scores.</p>
+    </div>
+
+    <button
+      className="view-all-button"
+      onClick={() => onMachinesShortcut("ALL")}
+    >
+      View Machine Fleet
+    </button>
+  </div>
+
+  <div className="risk-machines-grid">
+    {topRiskMachines.map((machine) => (
+      <article
+        className="risk-machine-card"
+        key={machine.id}
+        onClick={() => onAlertMachineClick(machine.id)}
+      >
+        <div>
+          <span
+            className={`health-badge ${machine.health_status.toLowerCase()}`}
+          >
+            {machine.health_status}
+          </span>
+
+          <h3>{machine.name}</h3>
+          <p>{machine.production_line}</p>
+        </div>
+
+        <div className="risk-score">
+          <span>Health</span>
+          <strong>{machine.health_score}%</strong>
+        </div>
+      </article>
+    ))}
+  </div>
+</section>
+
     </>
   );
 }
