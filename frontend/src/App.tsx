@@ -10,7 +10,13 @@ import {
   YAxis,
 } from "recharts";
 
-type Page = "dashboard" | "machines" | "alerts";
+import {
+  NavLink,
+  Route,
+  Routes,
+  useNavigate,
+  useParams,
+} from "react-router-dom";
 
 type DashboardSummary = {
   factories: number;
@@ -78,7 +84,8 @@ type AlertItem = {
 };
 
 function App() {
-  const [page, setPage] = useState<Page>("dashboard");
+  const navigate = useNavigate();
+
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
   const [error, setError] = useState("");
   const [machines, setMachines] = useState<MachineFleetItem[]>([]);
@@ -205,26 +212,33 @@ function App() {
         </div>
 
         <nav className="nav">
-          <button
-            className={page === "dashboard" ? "nav-item active" : "nav-item"}
-            onClick={() => setPage("dashboard")}
+          <NavLink
+            to="/"
+            end
+            className={({ isActive }) =>
+              isActive ? "nav-item active" : "nav-item"
+            }
           >
             Dashboard
-          </button>
+          </NavLink>
 
-          <button
-            className={page === "machines" ? "nav-item active" : "nav-item"}
-            onClick={() => setPage("machines")}
+          <NavLink
+            to="/machines"
+            className={({ isActive }) =>
+              isActive ? "nav-item active" : "nav-item"
+          }
           >
             Machines
-          </button>
+          </NavLink>
 
-          <button
-            className={page === "alerts" ? "nav-item active" : "nav-item"}
-            onClick={() => setPage("alerts")}
+          <NavLink
+            to="/alerts"
+            className={({ isActive }) =>
+              isActive ? "nav-item active" : "nav-item"
+            }
           >
             Alerts
-          </button>
+          </NavLink>
         </nav>
 
         <div className="sidebar-status">
@@ -234,55 +248,66 @@ function App() {
       </aside>
 
       <main className="content">
-        {page === "dashboard" && (
-          <DashboardPage
-            summary={summary}
-            error={error}
-            onMachinesShortcut={(status) => {
-              setMachineStatusShortcut(status);
-              setSelectedMachineId(null);
-              setPage("machines");
-            }}
-            onAlertsShortcut={(severity) => {
-              setAlertSeverityShortcut(severity);
-              setPage("alerts");
-            }}
-          />
-        )}
+          <Routes>
+            <Route
+              path="/"
+              element={
+                <DashboardPage
+                  summary={summary}
+                  error={error}
+                  onMachinesShortcut={(status) => {
+                    setMachineStatusShortcut(status);
+                    navigate("/machines");
+                  }}
+                  onAlertsShortcut={(severity) => {
+                    setAlertSeverityShortcut(severity);
+                    navigate("/alerts");
+                  }}
+                />
+              }
+            />
 
-        {page === "machines" && !selectedMachineId && (
-  <MachinesPage
-    machines={machines}
-    error={machinesError}
-    onSelectMachine={setSelectedMachineId}
-    initialStatusFilter={machineStatusShortcut}
-  />
-)}
+            <Route
+              path="/machines"
+              element={
+                <MachinesPage
+                  machines={machines}
+                  error={machinesError}
+                  initialStatusFilter={machineStatusShortcut}
+                  onSelectMachine={(machineId) => {
+                    navigate(`/machines/${machineId}`);
+                  }}
+                />
+              }
+            />
 
-{page === "machines" && selectedMachineId && (
-  <MachineDetailPage
-    machine={machineDetail}
-    error={machineDetailError}
-    trends={machineTrends}
-    trendsError={machineTrendsError}
-    onBack={() => {
-      setSelectedMachineId(null);
-      setMachineDetail(null);
-      setMachineTrends(null);
-    }}
-  />
-)}
-        {page === "alerts" && (
-          <AlertsPage
-            alerts={alerts}
-            error={alertsError}
-            initialSeverityFilter={alertSeverityShortcut}
-            onSelectMachine={(machineId) => {
-              setSelectedMachineId(machineId);
-              setPage("machines");
-            }}
-          />
-        )}
+            <Route
+              path="/machines/:machineId"
+              element={
+                <MachineDetailRoute
+                  machine={machineDetail}
+                  error={machineDetailError}
+                  trends={machineTrends}
+                  trendsError={machineTrendsError}
+                  setSelectedMachineId={setSelectedMachineId}
+                />
+              }
+            />
+
+            <Route
+              path="/alerts"
+              element={
+                <AlertsPage
+                  alerts={alerts}
+                  error={alertsError}
+                  initialSeverityFilter={alertSeverityShortcut}
+                  onSelectMachine={(machineId) => {
+                    navigate(`/machines/${machineId}`);
+                  }}
+                />
+              }
+            />
+          </Routes>
       </main>
     </div>
   );
@@ -510,7 +535,40 @@ const productionLines = Array.from(
     </>
   );
 }
+function MachineDetailRoute({
+  machine,
+  error,
+  trends,
+  trendsError,
+  setSelectedMachineId,
+}: {
+  machine: MachineDetail | null;
+  error: string;
+  trends: MachineTrends | null;
+  trendsError: string;
+  setSelectedMachineId: (machineId: string | null) => void;
+}) {
+  const { machineId } = useParams();
+  const navigate = useNavigate();
 
+  useEffect(() => {
+    setSelectedMachineId(machineId ?? null);
+
+    return () => {
+      setSelectedMachineId(null);
+    };
+  }, [machineId, setSelectedMachineId]);
+
+  return (
+    <MachineDetailPage
+      machine={machine}
+      error={error}
+      trends={trends}
+      trendsError={trendsError}
+      onBack={() => navigate("/machines")}
+    />
+  );
+}
 function MachineDetailPage({
   machine,
   error,

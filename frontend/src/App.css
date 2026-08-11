@@ -494,3 +494,8 @@ h1 {
   border-color: #334155;
   background: #172033;
 }
+
+.nav-item {
+  display: block;
+  text-decoration: none;
+}
