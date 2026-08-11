@@ -16,6 +16,7 @@ import {
   Routes,
   useNavigate,
   useParams,
+  useSearchParams,
 } from "react-router-dom";
 
 type DashboardSummary = {
@@ -257,11 +258,16 @@ function App() {
                   error={error}
                   onMachinesShortcut={(status) => {
                     setMachineStatusShortcut(status);
-                    navigate("/machines");
+                    navigate(`/machines?status=${status}`);
                   }}
                   onAlertsShortcut={(severity) => {
                     setAlertSeverityShortcut(severity);
-                    navigate("/alerts");
+
+                    navigate(
+                      severity === "ALL"
+                        ? "/alerts"
+                        : `/alerts?severity=${severity}`,
+                    );
                   }}
                 />
               }
@@ -421,8 +427,13 @@ function MachinesPage({
 }) {
 
   const [search, setSearch] = useState("");
-const [statusFilter, setStatusFilter] = useState(initialStatusFilter);
-const [productionLineFilter, setProductionLineFilter] = useState("ALL");
+const [searchParams, setSearchParams] = useSearchParams();
+
+const statusFilter =
+  searchParams.get("status") ?? initialStatusFilter;
+
+const productionLineFilter =
+  searchParams.get("line") ?? "ALL";
 
 const productionLines = Array.from(
   new Set(machines.map((machine) => machine.production_line)),
@@ -471,7 +482,17 @@ const productionLines = Array.from(
 <select
   className="filter-select"
   value={productionLineFilter}
-  onChange={(event) => setProductionLineFilter(event.target.value)}
+  onChange={(event) => {
+    const next = new URLSearchParams(searchParams);
+
+    if (event.target.value === "ALL") {
+      next.delete("line");
+    } else {
+      next.set("line", event.target.value);
+    }
+
+    setSearchParams(next);
+  }}
 >
   <option value="ALL">All Production Lines</option>
 
@@ -484,7 +505,17 @@ const productionLines = Array.from(
   <select
     className="filter-select"
     value={statusFilter}
-    onChange={(event) => setStatusFilter(event.target.value)}
+     onChange={(event) => {
+    const next = new URLSearchParams(searchParams);
+
+    if (event.target.value === "ALL") {
+      next.delete("status");
+    } else {
+      next.set("status", event.target.value);
+    }
+
+    setSearchParams(next);
+  }}
   >
     <option value="ALL">All Statuses</option>
     <option value="HEALTHY">Healthy</option>
@@ -737,8 +768,12 @@ function AlertsPage({
   initialSeverityFilter: string;
 }) {
 
+  const [searchParams, setSearchParams] = useSearchParams();
+
   const [search, setSearch] = useState("");
-  const [severityFilter, setSeverityFilter] = useState(initialSeverityFilter);
+
+  const severityFilter =
+    searchParams.get("severity") ?? initialSeverityFilter;
 
   if (error) {
     return <div className="status-message">Error: {error}</div>;
@@ -780,7 +815,17 @@ function AlertsPage({
   <select
     className="filter-select"
     value={severityFilter}
-    onChange={(event) => setSeverityFilter(event.target.value)}
+    onChange={(event) => {
+      const next = new URLSearchParams(searchParams);
+
+      if (event.target.value === "ALL") {
+        next.delete("severity");
+      } else {
+        next.set("severity", event.target.value);
+      }
+
+      setSearchParams(next);
+    }}
   >
     <option value="ALL">All Severities</option>
     <option value="WARNING">Warning</option>
