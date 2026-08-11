@@ -499,3 +499,103 @@ h1 {
   display: block;
   text-decoration: none;
 }
+
+.fleet-health-panel {
+  display: grid;
+  grid-template-columns: minmax(320px, 1.4fr) minmax(220px, 0.6fr);
+  gap: 24px;
+  padding: 22px;
+  border: 1px solid #1e293b;
+  border-radius: 16px;
+  background: #111827;
+}
+
+.fleet-health-chart {
+  height: 300px;
+}
+
+.fleet-health-legend {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 16px;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid #1e293b;
+  border-radius: 12px;
+  background: #0f172a;
+}
+
+.legend-item div {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.legend-item span {
+  color: #94a3b8;
+  font-size: 13px;
+}
+
+.legend-item strong {
+  font-size: 18px;
+}
+
+.legend-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.healthy-dot {
+  background: #22c55e;
+}
+
+.warning-dot {
+  background: #f59e0b;
+}
+
+.critical-dot {
+  background: #ef4444;
+}
+
+@media (max-width: 800px) {
+  .fleet-health-panel {
+    grid-template-columns: 1fr;
+  }
+}
+
+.resolved-dot {
+  background: #64748b;
+}
+
+.analytics-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 24px;
+  align-items: start;
+}
+
+.analytics-grid .section {
+  margin-top: 38px;
+}
+
+.analytics-grid .fleet-health-panel {
+  grid-template-columns: 1fr;
+}
+
+.analytics-grid .fleet-health-chart {
+  height: 260px;
+}
+
+@media (max-width: 1100px) {
+  .analytics-grid {
+    grid-template-columns: 1fr;
+  }
+}

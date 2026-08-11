@@ -8,6 +8,9 @@ import {
   Tooltip,
   XAxis,
   YAxis,
+  Cell,
+  Pie,
+  PieChart,
 } from "recharts";
 
 import {
@@ -369,26 +372,154 @@ function DashboardPage({
         />
       </section>
 
-      <section className="section">
-        <h2>Fleet Health</h2>
+<div className="analytics-grid">
+  <section className="section">
+    <h2>Fleet Health Distribution</h2>
 
-        <div className="grid">
-          <MetricCard label="Healthy" value={summary.healthy_machines} />
+    <div className="fleet-health-panel">
+      <div className="fleet-health-chart">
+        <ResponsiveContainer width="100%" height="100%">
+          <PieChart>
+            <Pie
+              data={[
+                {
+                  name: "Healthy",
+                  value: summary.healthy_machines,
+                },
+                {
+                  name: "Warning",
+                  value: summary.warning_machines,
+                },
+                {
+                  name: "Critical",
+                  value: summary.critical_machines,
+                },
+              ]}
+              dataKey="value"
+              nameKey="name"
+              innerRadius={72}
+              outerRadius={108}
+              paddingAngle={4}
+            >
+              <Cell fill="#22c55e" />
+              <Cell fill="#f59e0b" />
+              <Cell fill="#ef4444" />
+            </Pie>
 
-          <MetricCard
-            label="Warning"
-            value={summary.warning_machines}
-            onClick={() => onMachinesShortcut("WARNING")}
-          />
+            <Tooltip />
+          </PieChart>
+        </ResponsiveContainer>
+      </div>
 
-          <MetricCard
-            label="Critical"
-            value={summary.critical_machines}
-            onClick={() => onMachinesShortcut("CRITICAL")}
-          />
+      <div className="fleet-health-legend">
+        <div className="legend-item">
+          <span className="legend-dot healthy-dot" />
+          <div>
+            <span>Healthy</span>
+            <strong>{summary.healthy_machines}</strong>
+          </div>
         </div>
-      </section>
 
+        <div className="legend-item">
+          <span className="legend-dot warning-dot" />
+          <div>
+            <span>Warning</span>
+            <strong>{summary.warning_machines}</strong>
+          </div>
+        </div>
+
+        <div className="legend-item">
+          <span className="legend-dot critical-dot" />
+          <div>
+            <span>Critical</span>
+            <strong>{summary.critical_machines}</strong>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section className="section">
+    <h2>Alert Severity Distribution</h2>
+
+    <div className="fleet-health-panel">
+      <div className="fleet-health-chart">
+        <ResponsiveContainer width="100%" height="100%">
+          <PieChart>
+            <Pie
+              data={[
+                {
+                  name: "Warning",
+                  value: summary.warning_alerts,
+                },
+                {
+                  name: "Critical",
+                  value: summary.critical_alerts,
+                },
+              ]}
+              dataKey="value"
+              nameKey="name"
+              innerRadius={72}
+              outerRadius={108}
+              paddingAngle={4}
+            >
+              <Cell fill="#f59e0b" />
+              <Cell fill="#ef4444" />
+            </Pie>
+
+            <Tooltip />
+          </PieChart>
+        </ResponsiveContainer>
+      </div>
+
+      <div className="fleet-health-legend">
+        <div className="legend-item">
+          <span className="legend-dot warning-dot" />
+          <div>
+            <span>Warning</span>
+            <strong>{summary.warning_alerts}</strong>
+          </div>
+        </div>
+
+        <div className="legend-item">
+          <span className="legend-dot critical-dot" />
+          <div>
+            <span>Critical</span>
+            <strong>{summary.critical_alerts}</strong>
+          </div>
+        </div>
+
+        <div className="legend-item">
+          <span className="legend-dot resolved-dot" />
+          <div>
+            <span>Total Active</span>
+            <strong>{summary.active_alerts}</strong>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<section className="section">
+  <h2>Fleet Health</h2>
+
+  <div className="grid">
+    <MetricCard label="Healthy" value={summary.healthy_machines} />
+
+    <MetricCard
+      label="Warning"
+      value={summary.warning_machines}
+      onClick={() => onMachinesShortcut("WARNING")}
+    />
+
+    <MetricCard
+      label="Critical"
+      value={summary.critical_machines}
+      onClick={() => onMachinesShortcut("CRITICAL")}
+    />
+  </div>
+</section>
       <section className="section">
         <h2>Alert Overview</h2>
 
