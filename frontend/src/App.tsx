@@ -90,6 +90,8 @@ function App() {
   const [machineTrendsError, setMachineTrendsError] = useState("");
   const [alerts, setAlerts] = useState<AlertItem[]>([]);
   const [alertsError, setAlertsError] = useState("");
+  const [machineStatusShortcut, setMachineStatusShortcut] = useState("ALL");
+  const [alertSeverityShortcut, setAlertSeverityShortcut] = useState("ALL");
 
   useEffect(() => {
     fetch("http://127.0.0.1:8000/api/v1/alerts")
@@ -233,7 +235,19 @@ function App() {
 
       <main className="content">
         {page === "dashboard" && (
-          <DashboardPage summary={summary} error={error} />
+          <DashboardPage
+            summary={summary}
+            error={error}
+            onMachinesShortcut={(status) => {
+              setMachineStatusShortcut(status);
+              setSelectedMachineId(null);
+              setPage("machines");
+            }}
+            onAlertsShortcut={(severity) => {
+              setAlertSeverityShortcut(severity);
+              setPage("alerts");
+            }}
+          />
         )}
 
         {page === "machines" && !selectedMachineId && (
@@ -241,6 +255,7 @@ function App() {
     machines={machines}
     error={machinesError}
     onSelectMachine={setSelectedMachineId}
+    initialStatusFilter={machineStatusShortcut}
   />
 )}
 
@@ -261,6 +276,7 @@ function App() {
           <AlertsPage
             alerts={alerts}
             error={alertsError}
+            initialSeverityFilter={alertSeverityShortcut}
             onSelectMachine={(machineId) => {
               setSelectedMachineId(machineId);
               setPage("machines");
@@ -275,9 +291,13 @@ function App() {
 function DashboardPage({
   summary,
   error,
+  onMachinesShortcut,
+  onAlertsShortcut,
 }: {
   summary: DashboardSummary | null;
   error: string;
+  onMachinesShortcut: (status: string) => void;
+  onAlertsShortcut: (severity: string) => void;
 }) {
   if (error) {
     return <div className="status-message">Error: {error}</div>;
@@ -323,8 +343,18 @@ function DashboardPage({
 
         <div className="grid">
           <MetricCard label="Healthy" value={summary.healthy_machines} />
-          <MetricCard label="Warning" value={summary.warning_machines} />
-          <MetricCard label="Critical" value={summary.critical_machines} />
+
+          <MetricCard
+            label="Warning"
+            value={summary.warning_machines}
+            onClick={() => onMachinesShortcut("WARNING")}
+          />
+
+          <MetricCard
+            label="Critical"
+            value={summary.critical_machines}
+            onClick={() => onMachinesShortcut("CRITICAL")}
+          />
         </div>
       </section>
 
@@ -332,12 +362,20 @@ function DashboardPage({
         <h2>Alert Overview</h2>
 
         <div className="grid">
-          <MetricCard label="Active Alerts" value={summary.active_alerts} />
+          <MetricCard
+            label="Active Alerts"
+            value={summary.active_alerts}
+            onClick={() => onAlertsShortcut("ALL")}
+          />
+
           <MetricCard label="Warnings" value={summary.warning_alerts} />
+
           <MetricCard
             label="Critical Alerts"
             value={summary.critical_alerts}
+            onClick={() => onAlertsShortcut("CRITICAL")}
           />
+
           <MetricCard label="Resolved" value={summary.resolved_alerts} />
         </div>
       </section>
@@ -349,14 +387,21 @@ function MachinesPage({
   machines,
   error,
   onSelectMachine,
+  initialStatusFilter,
 }: {
   machines: MachineFleetItem[];
   error: string;
   onSelectMachine: (machineId: string) => void;
+  initialStatusFilter: string;
 }) {
 
   const [search, setSearch] = useState("");
-const [statusFilter, setStatusFilter] = useState("ALL");
+const [statusFilter, setStatusFilter] = useState(initialStatusFilter);
+const [productionLineFilter, setProductionLineFilter] = useState("ALL");
+
+const productionLines = Array.from(
+  new Set(machines.map((machine) => machine.production_line)),
+).sort();
 
   const filteredMachines = machines.filter((machine) => {
   const matchesSearch =
@@ -367,7 +412,11 @@ const [statusFilter, setStatusFilter] = useState("ALL");
   const matchesStatus =
     statusFilter === "ALL" || machine.health_status === statusFilter;
 
-  return matchesSearch && matchesStatus;
+  const matchesProductionLine =
+    productionLineFilter === "ALL" ||
+    machine.production_line === productionLineFilter;
+
+  return matchesSearch && matchesStatus && matchesProductionLine;
 });
 
   if (error) {
@@ -394,7 +443,19 @@ const [statusFilter, setStatusFilter] = useState("ALL");
     value={search}
     onChange={(event) => setSearch(event.target.value)}
   />
+<select
+  className="filter-select"
+  value={productionLineFilter}
+  onChange={(event) => setProductionLineFilter(event.target.value)}
+>
+  <option value="ALL">All Production Lines</option>
 
+  {productionLines.map((productionLine) => (
+    <option key={productionLine} value={productionLine}>
+      {productionLine}
+    </option>
+  ))}
+</select>
   <select
     className="filter-select"
     value={statusFilter}
@@ -589,12 +650,17 @@ function TrendChart({
 function MetricCard({
   label,
   value,
+  onClick,
 }: {
   label: string;
   value: string | number;
+  onClick?: () => void;
 }) {
   return (
-    <article className="card">
+    <article
+      className={onClick ? "card clickable-card" : "card"}
+      onClick={onClick}
+    >
       <span>{label}</span>
       <strong>{value}</strong>
     </article>
@@ -605,14 +671,16 @@ function AlertsPage({
   alerts,
   error,
   onSelectMachine,
+  initialSeverityFilter,
 }: {
   alerts: AlertItem[];
   error: string;
   onSelectMachine: (machineId: string) => void;
+  initialSeverityFilter: string;
 }) {
 
   const [search, setSearch] = useState("");
-  const [severityFilter, setSeverityFilter] = useState("ALL");
+  const [severityFilter, setSeverityFilter] = useState(initialSeverityFilter);
 
   if (error) {
     return <div className="status-message">Error: {error}</div>;
