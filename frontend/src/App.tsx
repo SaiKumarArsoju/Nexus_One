@@ -258,7 +258,14 @@ function App() {
   />
 )}
         {page === "alerts" && (
-          <AlertsPage alerts={alerts} error={alertsError} />
+          <AlertsPage
+            alerts={alerts}
+            error={alertsError}
+            onSelectMachine={(machineId) => {
+              setSelectedMachineId(machineId);
+              setPage("machines");
+            }}
+          />
         )}
       </main>
     </div>
@@ -337,6 +344,7 @@ function DashboardPage({
     </>
   );
 }
+
 function MachinesPage({
   machines,
   error,
@@ -346,6 +354,22 @@ function MachinesPage({
   error: string;
   onSelectMachine: (machineId: string) => void;
 }) {
+
+  const [search, setSearch] = useState("");
+const [statusFilter, setStatusFilter] = useState("ALL");
+
+  const filteredMachines = machines.filter((machine) => {
+  const matchesSearch =
+    machine.name.toLowerCase().includes(search.toLowerCase()) ||
+    machine.serial_number.toLowerCase().includes(search.toLowerCase()) ||
+    machine.production_line.toLowerCase().includes(search.toLowerCase());
+
+  const matchesStatus =
+    statusFilter === "ALL" || machine.health_status === statusFilter;
+
+  return matchesSearch && matchesStatus;
+});
+
   if (error) {
     return <div className="status-message">Error: {error}</div>;
   }
@@ -362,6 +386,31 @@ function MachinesPage({
         </div>
       </header>
 
+<div className="filters-bar">
+  <input
+    className="search-input"
+    type="text"
+    placeholder="Search machine, serial number, or production line..."
+    value={search}
+    onChange={(event) => setSearch(event.target.value)}
+  />
+
+  <select
+    className="filter-select"
+    value={statusFilter}
+    onChange={(event) => setStatusFilter(event.target.value)}
+  >
+    <option value="ALL">All Statuses</option>
+    <option value="HEALTHY">Healthy</option>
+    <option value="WARNING">Warning</option>
+    <option value="CRITICAL">Critical</option>
+  </select>
+</div>
+
+<p className="results-count">
+  Showing {filteredMachines.length} of {machines.length} machines
+</p>
+
       <div className="machine-table-wrapper">
         <table className="machine-table">
           <thead>
@@ -375,7 +424,7 @@ function MachinesPage({
           </thead>
 
           <tbody>
-            {machines.map((machine) => (
+            {filteredMachines.map((machine) => (
               <tr
                 key={machine.id}
                 className="clickable-row"
@@ -555,13 +604,31 @@ function MetricCard({
 function AlertsPage({
   alerts,
   error,
+  onSelectMachine,
 }: {
   alerts: AlertItem[];
   error: string;
+  onSelectMachine: (machineId: string) => void;
 }) {
+
+  const [search, setSearch] = useState("");
+  const [severityFilter, setSeverityFilter] = useState("ALL");
+
   if (error) {
     return <div className="status-message">Error: {error}</div>;
   }
+
+  const filteredAlerts = alerts.filter((alert) => {
+    const matchesSearch =
+      alert.machine_name.toLowerCase().includes(search.toLowerCase()) ||
+      alert.alert_type.toLowerCase().includes(search.toLowerCase()) ||
+      alert.message.toLowerCase().includes(search.toLowerCase());
+
+    const matchesSeverity =
+      severityFilter === "ALL" || alert.severity === severityFilter;
+
+    return matchesSearch && matchesSeverity;
+  });
 
   return (
     <>
@@ -575,14 +642,39 @@ function AlertsPage({
         </div>
       </header>
 
+<div className="filters-bar">
+  <input
+    className="search-input"
+    type="text"
+    placeholder="Search machine, alert type, or message..."
+    value={search}
+    onChange={(event) => setSearch(event.target.value)}
+  />
+
+  <select
+    className="filter-select"
+    value={severityFilter}
+    onChange={(event) => setSeverityFilter(event.target.value)}
+  >
+    <option value="ALL">All Severities</option>
+    <option value="WARNING">Warning</option>
+    <option value="CRITICAL">Critical</option>
+  </select>
+</div>
+
+<p className="results-count">
+  Showing {filteredAlerts.length} of {alerts.length} alerts
+</p>
+
       <div className="alerts-list">
-        {alerts.length === 0 ? (
+        {filteredAlerts.length === 0 ? (
           <p className="no-warnings">No active alerts.</p>
         ) : (
-          alerts.map((alert) => (
+          filteredAlerts.map((alert) => (
             <article
               key={alert.id}
               className={`alert-card ${alert.severity.toLowerCase()}`}
+              onClick={() => onSelectMachine(alert.machine_id)}
             >
               <div>
                 <div className="alert-header">

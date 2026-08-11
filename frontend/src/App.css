@@ -381,6 +381,15 @@ h1 {
   border: 1px solid #1e293b;
   border-radius: 14px;
   background: #111827;
+  cursor: pointer;
+  transition:
+    transform 0.15s ease,
+    background 0.15s ease;
+}
+
+.alert-card:hover {
+  background: #172033;
+  transform: translateY(-1px);
 }
 
 .alert-card.warning {
@@ -420,4 +429,54 @@ h1 {
   color: #64748b;
   font-size: 12px;
   white-space: nowrap;
+}
+
+.filters-bar {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.search-input,
+.filter-select {
+  border: 1px solid #1e293b;
+  border-radius: 10px;
+  background: #111827;
+  color: #e2e8f0;
+  outline: none;
+}
+
+.search-input {
+  flex: 1;
+  padding: 12px 14px;
+}
+
+.filter-select {
+  min-width: 170px;
+  padding: 12px;
+}
+
+.search-input::placeholder {
+  color: #64748b;
+}
+
+.search-input:focus,
+.filter-select:focus {
+  border-color: #334155;
+}
+
+.results-count {
+  margin: 0 0 10px;
+  color: #64748b;
+  font-size: 12px;
+}
+
+@media (max-width: 700px) {
+  .filters-bar {
+    flex-direction: column;
+  }
+
+  .filter-select {
+    width: 100%;
+  }
 }
