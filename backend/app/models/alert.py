@@ -19,6 +19,7 @@ class AlertSeverity(StrEnum):
 
 class AlertStatus(StrEnum):
     ACTIVE = "ACTIVE"
+    ACKNOWLEDGED = "ACKNOWLEDGED"
     RESOLVED = "RESOLVED"
 
 

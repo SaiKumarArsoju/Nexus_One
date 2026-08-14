@@ -45,12 +45,16 @@ function App() {
   const [machineStatusShortcut, setMachineStatusShortcut] = useState("ALL");
   const [alertSeverityShortcut, setAlertSeverityShortcut] = useState("ALL");
 
-useEffect(() => {
+function refreshAlerts() {
   getAlerts()
     .then(setAlerts)
     .catch((err: Error) => {
       setAlertsError(err.message);
     });
+}
+
+useEffect(() => {
+  refreshAlerts();
 }, []);
 
  useEffect(() => {
@@ -211,6 +215,7 @@ useEffect(() => {
                   alerts={alerts}
                   error={alertsError}
                   initialSeverityFilter={alertSeverityShortcut}
+                  onAlertsChanged={refreshAlerts}
                   onSelectMachine={(machineId) => {
                     navigate(`/machines/${machineId}`);
                   }}

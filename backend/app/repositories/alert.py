@@ -23,7 +23,14 @@ class AlertRepository:
                 Alert.created_at,
             )
             .join(Machine, Alert.machine_id == Machine.id)
-            .where(Alert.status == AlertStatus.ACTIVE)
+            .where(
+                Alert.status.in_(
+                    [
+                        AlertStatus.ACTIVE,
+                        AlertStatus.ACKNOWLEDGED,
+                    ]
+                )
+            )
             .order_by(Alert.created_at.desc())
         )
 
@@ -37,8 +44,21 @@ class AlertRepository:
         statement = select(Alert).where(
             Alert.machine_id == machine_id,
             Alert.alert_type == alert_type,
-            Alert.status == AlertStatus.ACTIVE,
+            Alert.status.in_(
+                [
+                    AlertStatus.ACTIVE,
+                    AlertStatus.ACKNOWLEDGED,
+                ]
+            ),
         )
+
+        return self.db.scalar(statement)
+
+    def get_alert_by_id(
+        self,
+        alert_id: UUID,
+    ) -> Alert | None:
+        statement = select(Alert).where(Alert.id == alert_id)
 
         return self.db.scalar(statement)
 
@@ -58,6 +78,17 @@ class AlertRepository:
         )
 
         self.db.add(alert)
+        self.db.commit()
+        self.db.refresh(alert)
+
+        return alert
+
+    def acknowledge_alert(
+        self,
+        alert: Alert,
+    ) -> Alert:
+        alert.status = AlertStatus.ACKNOWLEDGED
+
         self.db.commit()
         self.db.refresh(alert)
 

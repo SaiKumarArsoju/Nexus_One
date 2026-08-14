@@ -1,5 +1,10 @@
 import { useState } from "react";
 import { useSearchParams } from "react-router-dom";
+import {
+  acknowledgeAlert,
+  resolveAlert,
+} from "../api/client";
+
 
 import type { AlertItem } from "../types/api";
 
@@ -8,6 +13,7 @@ type AlertsPageProps = {
   error: string;
   onSelectMachine: (machineId: string) => void;
   initialSeverityFilter: string;
+  onAlertsChanged: () => void;
 };
 
 function AlertsPage({
@@ -15,9 +21,13 @@ function AlertsPage({
   error,
   onSelectMachine,
   initialSeverityFilter,
+  onAlertsChanged,
 }: AlertsPageProps) {
+
+
   const [searchParams, setSearchParams] = useSearchParams();
   const [search, setSearch] = useState("");
+  const [actionError, setActionError] = useState("");
 
   const severityFilter =
     searchParams.get("severity") ?? initialSeverityFilter;
@@ -38,6 +48,44 @@ function AlertsPage({
 
     return matchesSearch && matchesSeverity;
   });
+
+  async function handleAcknowledge(
+  event: React.MouseEvent,
+  alertId: string,
+) {
+  event.stopPropagation();
+  setActionError("");
+
+  try {
+    await acknowledgeAlert(alertId);
+    onAlertsChanged();
+  } catch (err) {
+    setActionError(
+      err instanceof Error
+        ? err.message
+        : "Failed to acknowledge alert",
+    );
+  }
+}
+
+async function handleResolve(
+  event: React.MouseEvent,
+  alertId: string,
+) {
+  event.stopPropagation();
+  setActionError("");
+
+  try {
+    await resolveAlert(alertId);
+    onAlertsChanged();
+  } catch (err) {
+    setActionError(
+      err instanceof Error
+        ? err.message
+        : "Failed to resolve alert",
+    );
+  }
+}
 
   return (
     <>
@@ -81,6 +129,10 @@ function AlertsPage({
         </select>
       </div>
 
+{actionError && (
+  <p className="no-warnings">{actionError}</p>
+)}
+
       <p className="results-count">
         Showing {filteredAlerts.length} of {alerts.length} alerts
       </p>
@@ -115,6 +167,28 @@ function AlertsPage({
               <time>
                 {new Date(alert.created_at).toLocaleString()}
               </time>
+
+              <div className="alert-actions">
+                    {alert.status === "ACTIVE" && (
+                        <button
+                        className="alert-action-button"
+                        onClick={(event) =>
+                            handleAcknowledge(event, alert.id)
+                        }
+                    >
+                        Acknowledge
+                        </button>
+                    )}
+
+                    <button
+                        className="alert-action-button resolve"
+                        onClick={(event) =>
+                        handleResolve(event, alert.id)
+                        }
+                    >
+                        Resolve
+                    </button>
+                </div>
             </article>
           ))
         )}

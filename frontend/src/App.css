@@ -747,3 +747,27 @@ h1 {
   margin-top: 4px;
   font-size: 26px;
 }
+
+.alert-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.alert-action-button {
+  padding: 7px 11px;
+  border: 1px solid #334155;
+  border-radius: 8px;
+  background: #172033;
+  color: #cbd5e1;
+  cursor: pointer;
+}
+
+.alert-action-button:hover {
+  background: #1e293b;
+}
+
+.alert-action-button.resolve {
+  border-color: #7f1d1d;
+  color: #fecaca;
+}
