@@ -5,6 +5,13 @@ import MachinesPage from "./pages/MachinesPage";
 import MachineDetailRoute from "./pages/MachineDetailPage";
 import AlertsPage from "./pages/AlertsPage";
 
+import {
+  getAlerts,
+  getDashboardSummary,
+  getMachineDetail,
+  getMachines,
+  getMachineTrends,
+} from "./api/client";
 
 import {
   NavLink,
@@ -38,105 +45,60 @@ function App() {
   const [machineStatusShortcut, setMachineStatusShortcut] = useState("ALL");
   const [alertSeverityShortcut, setAlertSeverityShortcut] = useState("ALL");
 
-  useEffect(() => {
-    fetch("http://127.0.0.1:8000/api/v1/alerts")
-      .then((response) => {
-        if (!response.ok) {
-          throw new Error("Failed to load alerts");
-        }
+useEffect(() => {
+  getAlerts()
+    .then(setAlerts)
+    .catch((err: Error) => {
+      setAlertsError(err.message);
+    });
+}, []);
 
-        return response.json();
-      })
-      .then((data: AlertItem[]) => {
-        setAlerts(data);
-      })
-      .catch((err: Error) => {
-        setAlertsError(err.message);
-      });
-  }, []);
+ useEffect(() => {
+  if (!selectedMachineId) {
+    return;
+  }
 
-  useEffect(() => {
-    if (!selectedMachineId) {
-      return;
-    }
+  setMachineTrends(null);
+  setMachineTrendsError("");
 
-    setMachineTrends(null);
-    setMachineTrendsError("");
+  getMachineTrends(selectedMachineId)
+    .then(setMachineTrends)
+    .catch((err: Error) => {
+      setMachineTrendsError(err.message);
+    });
+}, [selectedMachineId]);
 
-    fetch(
-      `http://127.0.0.1:8000/api/v1/machines/${selectedMachineId}/trends`,
-    )
-      .then((response) => {
-        if (!response.ok) {
-          throw new Error("Failed to load telemetry trends");
-        }
+ useEffect(() => {
+  if (!selectedMachineId) {
+    return;
+  }
 
-        return response.json();
-      })
-      .then((data: MachineTrends) => {
-        setMachineTrends(data);
-      })
-      .catch((err: Error) => {
-        setMachineTrendsError(err.message);
-      });
-  }, [selectedMachineId]);
+  setMachineDetail(null);
+  setMachineDetailError("");
 
-  useEffect(() => {
-    if (!selectedMachineId) {
-      return;
-    }
+  getMachineDetail(selectedMachineId)
+    .then(setMachineDetail)
+    .catch((err: Error) => {
+      setMachineDetailError(err.message);
+    });
+}, [selectedMachineId]);
 
-    setMachineDetail(null);
-    setMachineDetailError("");
+ useEffect(() => {
+  getDashboardSummary()
+    .then(setSummary)
+    .catch((err: Error) => {
+      setError(err.message);
+    });
+}, []);
 
-    fetch(`http://127.0.0.1:8000/api/v1/machines/${selectedMachineId}`)
-      .then((response) => {
-        if (!response.ok) {
-          throw new Error("Failed to load machine details");
-        }
+ useEffect(() => {
+  getMachines()
+    .then(setMachines)
+    .catch((err: Error) => {
+      setMachinesError(err.message);
+    });
+}, []);
 
-        return response.json();
-      })
-      .then((data: MachineDetail) => {
-        setMachineDetail(data);
-      })
-      .catch((err: Error) => {
-        setMachineDetailError(err.message);
-      });
-  }, [selectedMachineId]);
-
-  useEffect(() => {
-    fetch("http://127.0.0.1:8000/api/v1/dashboard/summary")
-      .then((response) => {
-        if (!response.ok) {
-          throw new Error("Failed to load dashboard data");
-        }
-
-        return response.json();
-      })
-      .then((data: DashboardSummary) => {
-        setSummary(data);
-      })
-      .catch((err: Error) => {
-        setError(err.message);
-      });
-  }, []);
-  useEffect(() => {
-    fetch("http://127.0.0.1:8000/api/v1/machines")
-      .then((response) => {
-        if (!response.ok) {
-          throw new Error("Failed to load machines");
-        }
-
-        return response.json();
-      })
-      .then((data: MachineFleetItem[]) => {
-        setMachines(data);
-      })
-      .catch((err: Error) => {
-        setMachinesError(err.message);
-      });
-  }, []);
   return (
     <div className="app-shell">
       <aside className="sidebar">
