@@ -1,5 +1,3 @@
-from uuid import uuid4
-
 import pytest
 from app.core.enums import MachineStatus
 from app.database.session import get_db
@@ -24,47 +22,44 @@ TestingSessionLocal = sessionmaker(
 )
 
 
-def override_get_db():
-    database = TestingSessionLocal()
-
-    try:
-        yield database
-    finally:
-        database.close()
-
-
-app.dependency_overrides[get_db] = override_get_db
-
-
-@pytest.fixture
-def client() -> TestClient:
-    return TestClient(app)
-
-
 @pytest.fixture
 def db() -> Session:
-    database = TestingSessionLocal()
+    connection = test_engine.connect()
+    transaction = connection.begin()
+
+    database = TestingSessionLocal(bind=connection)
 
     try:
         yield database
     finally:
-        database.rollback()
         database.close()
+        transaction.rollback()
+        connection.close()
+
+
+@pytest.fixture
+def client(db: Session) -> TestClient:
+    def override_get_db():
+        yield db
+
+    app.dependency_overrides[get_db] = override_get_db
+
+    with TestClient(app) as test_client:
+        yield test_client
+
+    app.dependency_overrides.clear()
 
 
 @pytest.fixture
 def test_factory(db: Session) -> Factory:
-    unique_id = uuid4().hex[:8]
-
     factory = Factory(
-        name=f"Test Factory {unique_id}",
-        code=f"TEST_{unique_id}",
+        name="Test Factory",
+        code="TEST_FACTORY",
         location="Test Location",
     )
 
     db.add(factory)
-    db.commit()
-    db.refresh(factory)
+    db.flush()
 
     return factory
 
@@ -80,8 +75,7 @@ def test_production_line(
     )
 
     db.add(production_line)
-    db.commit()
-    db.refresh(production_line)
+    db.flush()
 
     return production_line
 
@@ -91,11 +85,9 @@ def test_machine(
     db: Session,
     test_production_line: ProductionLine,
 ) -> Machine:
-    unique_id = uuid4().hex[:8]
-
     machine = Machine(
         name="Test Machine",
-        serial_number=f"TEST-MACHINE-{unique_id}",
+        serial_number="TEST-MACHINE-001",
         manufacturer="NEXUS Test",
         model_number="TEST-001",
         status=MachineStatus.RUNNING,
@@ -103,7 +95,6 @@ def test_machine(
     )
 
     db.add(machine)
-    db.commit()
-    db.refresh(machine)
+    db.flush()
 
     return machine
