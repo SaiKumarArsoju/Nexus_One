@@ -1,6 +1,8 @@
+from collections.abc import Mapping
 from dataclasses import dataclass
 
 from app.core.enums import SensorType
+from app.domain.alert_rules import get_abnormal_alert_rules
 
 
 @dataclass(frozen=True)
@@ -10,32 +12,14 @@ class MachineHealthResult:
 
 
 def calculate_machine_health(
-    values: dict[SensorType, float],
+    values: Mapping[SensorType, float],
+    thresholds: Mapping[SensorType, float],
 ) -> MachineHealthResult:
-    score = 100
-
-    temperature = values.get(SensorType.TEMPERATURE)
-    pressure = values.get(SensorType.PRESSURE)
-    vibration = values.get(SensorType.VIBRATION)
-    rpm = values.get(SensorType.RPM)
-    energy = values.get(SensorType.ENERGY)
-
-    if temperature is not None and temperature > 90:
-        score -= 20
-
-    if pressure is not None and pressure > 7.5:
-        score -= 15
-
-    if vibration is not None and vibration > 0.4:
-        score -= 25
-
-    if rpm is not None and rpm > 2800:
-        score -= 15
-
-    if energy is not None and energy > 28:
-        score -= 10
-
-    score = max(score, 0)
+    abnormal_rules = get_abnormal_alert_rules(values, thresholds)
+    score = max(
+        100 - sum(rule.health_score_penalty for rule in abnormal_rules),
+        0,
+    )
 
     if score >= 85:
         status = "HEALTHY"

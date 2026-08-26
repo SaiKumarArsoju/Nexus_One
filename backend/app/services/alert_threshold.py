@@ -1,6 +1,6 @@
 from sqlalchemy.orm import Session
 
-from app.domain.alert_rules import ALERT_RULES
+from app.domain.alert_rules import ALERT_RULES, validate_threshold_map
 from app.repositories import AlertThresholdRepository
 from app.schemas import AlertThresholdResponse
 
@@ -11,14 +11,17 @@ class AlertThresholdService:
 
     def get_alert_thresholds(self) -> list[AlertThresholdResponse]:
         thresholds = {threshold.sensor_type: threshold for threshold in self.repository.get_all()}
+        validate_threshold_map(
+            {
+                sensor_type: threshold.threshold_value
+                for sensor_type, threshold in thresholds.items()
+            }
+        )
 
         responses: list[AlertThresholdResponse] = []
 
         for rule in ALERT_RULES:
-            threshold = thresholds.get(rule.sensor_type)
-
-            if threshold is None:
-                raise RuntimeError(f"Missing alert threshold for {rule.sensor_type.value}")
+            threshold = thresholds[rule.sensor_type]
 
             responses.append(
                 AlertThresholdResponse(

@@ -1,3 +1,4 @@
+from collections.abc import Mapping
 from dataclasses import dataclass
 
 from app.core.enums import SensorType
@@ -16,6 +17,10 @@ class AlertRule:
     @staticmethod
     def is_abnormal(reading: float, threshold: float) -> bool:
         return reading > threshold
+
+
+class AlertThresholdConfigurationError(RuntimeError):
+    """Raised when persisted alert threshold configuration is incomplete."""
 
 
 ALERT_RULES: tuple[AlertRule, ...] = (
@@ -64,3 +69,31 @@ ALERT_RULES: tuple[AlertRule, ...] = (
 ALERT_RULES_BY_SENSOR_TYPE: dict[SensorType, AlertRule] = {
     rule.sensor_type: rule for rule in ALERT_RULES
 }
+
+
+def validate_threshold_map(
+    thresholds: Mapping[SensorType, float],
+) -> None:
+    missing_sensor_types = [
+        sensor_type for sensor_type in SensorType if sensor_type not in thresholds
+    ]
+
+    if missing_sensor_types:
+        missing_values = ", ".join(sensor_type.value for sensor_type in missing_sensor_types)
+        raise AlertThresholdConfigurationError(
+            f"Missing persisted alert thresholds for: {missing_values}"
+        )
+
+
+def get_abnormal_alert_rules(
+    values: Mapping[SensorType, float],
+    thresholds: Mapping[SensorType, float],
+) -> tuple[AlertRule, ...]:
+    validate_threshold_map(thresholds)
+
+    return tuple(
+        rule
+        for rule in ALERT_RULES
+        if (reading := values.get(rule.sensor_type)) is not None
+        and rule.is_abnormal(reading, thresholds[rule.sensor_type])
+    )

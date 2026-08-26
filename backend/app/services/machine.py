@@ -3,8 +3,12 @@ from collections import defaultdict
 from sqlalchemy.orm import Session
 
 from app.core.enums import SensorType
+from app.domain.alert_rules import (
+    get_abnormal_alert_rules,
+    validate_threshold_map,
+)
 from app.domain.machine_health import calculate_machine_health
-from app.repositories import MachineRepository
+from app.repositories import AlertThresholdRepository, MachineRepository
 from app.schemas import (
     MachineDetailResponse,
     MachineFleetItemResponse,
@@ -16,10 +20,13 @@ from app.schemas import (
 class MachineService:
     def __init__(self, db: Session) -> None:
         self.repository = MachineRepository(db)
+        self.threshold_repository = AlertThresholdRepository(db)
 
     def get_fleet(self) -> list[MachineFleetItemResponse]:
         machines = self.repository.get_all_machines_with_lines()
         latest_readings = self.repository.get_latest_sensor_readings()
+        thresholds = self.threshold_repository.get_threshold_map()
+        validate_threshold_map(thresholds)
 
         machine_values: dict = defaultdict(dict)
 
@@ -30,7 +37,7 @@ class MachineService:
 
         for machine in machines:
             values: dict[SensorType, float] = machine_values.get(machine.id, {})
-            health = calculate_machine_health(values)
+            health = calculate_machine_health(values, thresholds)
 
             fleet.append(
                 MachineFleetItemResponse(
@@ -63,7 +70,9 @@ class MachineService:
             if reading.machine_id == machine_id:
                 values[reading.sensor_type] = reading.value
 
-        health = calculate_machine_health(values)
+        thresholds = self.threshold_repository.get_threshold_map()
+        validate_threshold_map(thresholds)
+        health = calculate_machine_health(values, thresholds)
 
         temperature = values.get(SensorType.TEMPERATURE)
         pressure = values.get(SensorType.PRESSURE)
@@ -71,22 +80,7 @@ class MachineService:
         rpm = values.get(SensorType.RPM)
         energy = values.get(SensorType.ENERGY)
 
-        warnings = []
-
-        if temperature is not None and temperature > 90:
-            warnings.append("High temperature detected")
-
-        if pressure is not None and pressure > 7.5:
-            warnings.append("High pressure detected")
-
-        if vibration is not None and vibration > 0.4:
-            warnings.append("High vibration detected")
-
-        if rpm is not None and rpm > 2800:
-            warnings.append("High RPM detected")
-
-        if energy is not None and energy > 28:
-            warnings.append("High energy consumption detected")
+        warnings = [rule.message for rule in get_abnormal_alert_rules(values, thresholds)]
 
         return MachineDetailResponse(
             id=machine.id,

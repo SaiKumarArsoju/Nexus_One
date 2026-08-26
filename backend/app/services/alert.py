@@ -2,9 +2,13 @@ from uuid import UUID
 
 from sqlalchemy.orm import Session
 
-from app.core.enums import SensorType
-from app.models import AlertSeverity, AlertStatus
-from app.repositories import AlertRepository, MachineRepository
+from app.domain.alert_rules import ALERT_RULES, validate_threshold_map
+from app.models import AlertStatus
+from app.repositories import (
+    AlertRepository,
+    AlertThresholdRepository,
+    MachineRepository,
+)
 from app.schemas import AlertResponse
 
 
@@ -12,6 +16,7 @@ class AlertService:
     def __init__(self, db: Session) -> None:
         self.repository = AlertRepository(db)
         self.machine_repository = MachineRepository(db)
+        self.threshold_repository = AlertThresholdRepository(db)
 
     def get_active_alerts(self) -> list[AlertResponse]:
         rows = self.repository.get_active_alerts()
@@ -97,6 +102,8 @@ class AlertService:
         )
 
     def sync_machine_alerts(self) -> int:
+        thresholds = self.threshold_repository.get_threshold_map()
+        validate_threshold_map(thresholds)
         latest_readings = self.machine_repository.get_latest_sensor_readings()
 
         machine_values: dict = {}
@@ -108,59 +115,25 @@ class AlertService:
         created_count = 0
 
         for machine_id, values in machine_values.items():
-            conditions = [
-                (
-                    "HIGH_TEMPERATURE",
-                    values.get(SensorType.TEMPERATURE),
-                    90,
-                    AlertSeverity.WARNING,
-                    "High temperature detected",
-                ),
-                (
-                    "HIGH_PRESSURE",
-                    values.get(SensorType.PRESSURE),
-                    7.5,
-                    AlertSeverity.WARNING,
-                    "High pressure detected",
-                ),
-                (
-                    "HIGH_VIBRATION",
-                    values.get(SensorType.VIBRATION),
-                    0.4,
-                    AlertSeverity.CRITICAL,
-                    "High vibration detected",
-                ),
-                (
-                    "HIGH_RPM",
-                    values.get(SensorType.RPM),
-                    2800,
-                    AlertSeverity.WARNING,
-                    "High RPM detected",
-                ),
-                (
-                    "HIGH_ENERGY",
-                    values.get(SensorType.ENERGY),
-                    28,
-                    AlertSeverity.WARNING,
-                    "High energy consumption detected",
-                ),
-            ]
-
-            for alert_type, value, threshold, severity, message in conditions:
+            for rule in ALERT_RULES:
                 existing_alert = self.repository.get_active_alert(
                     machine_id=machine_id,
-                    alert_type=alert_type,
+                    alert_type=rule.alert_type,
                 )
 
-                is_abnormal = value is not None and value > threshold
+                value = values.get(rule.sensor_type)
+                is_abnormal = value is not None and rule.is_abnormal(
+                    value,
+                    thresholds[rule.sensor_type],
+                )
 
                 if is_abnormal:
                     if existing_alert is None:
                         self.repository.create_alert(
                             machine_id=machine_id,
-                            severity=severity,
-                            alert_type=alert_type,
-                            message=message,
+                            severity=rule.severity,
+                            alert_type=rule.alert_type,
+                            message=rule.message,
                         )
 
                         created_count += 1

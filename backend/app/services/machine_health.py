@@ -4,14 +4,19 @@ from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
 from app.core.enums import SensorType
+from app.domain.alert_rules import (
+    get_abnormal_alert_rules,
+    validate_threshold_map,
+)
 from app.domain.machine_health import calculate_machine_health
-from app.repositories import MachineHealthRepository
+from app.repositories import AlertThresholdRepository, MachineHealthRepository
 from app.schemas import MachineHealthResponse
 
 
 class MachineHealthService:
     def __init__(self, db: Session) -> None:
         self.repository = MachineHealthRepository(db)
+        self.threshold_repository = AlertThresholdRepository(db)
 
     def get_health(self, machine_id: UUID) -> MachineHealthResponse:
         machine = self.repository.get_machine(machine_id)
@@ -22,19 +27,14 @@ class MachineHealthService:
                 detail="Machine not found",
             )
 
-        sensors = self.repository.get_machine_sensors(machine_id)
+        latest_readings = self.repository.get_latest_sensor_readings(machine_id)
+        latest_values: dict[SensorType, float] = {
+            reading.sensor_type: reading.value for reading in latest_readings
+        }
 
-        latest_values: dict[SensorType, float] = {}
-
-        for sensor in sensors:
-            reading = self.repository.get_latest_reading(sensor.id)
-
-            if reading is not None:
-                latest_values[sensor.sensor_type] = reading.value
-
-        health = calculate_machine_health(latest_values)
-
-        warnings: list[str] = []
+        thresholds = self.threshold_repository.get_threshold_map()
+        validate_threshold_map(thresholds)
+        health = calculate_machine_health(latest_values, thresholds)
 
         temperature = latest_values.get(SensorType.TEMPERATURE)
         pressure = latest_values.get(SensorType.PRESSURE)
@@ -42,20 +42,7 @@ class MachineHealthService:
         rpm = latest_values.get(SensorType.RPM)
         energy = latest_values.get(SensorType.ENERGY)
 
-        if temperature is not None and temperature > 90:
-            warnings.append("High temperature detected")
-
-        if pressure is not None and pressure > 7.5:
-            warnings.append("High pressure detected")
-
-        if vibration is not None and vibration > 0.4:
-            warnings.append("High vibration detected")
-
-        if rpm is not None and rpm > 2800:
-            warnings.append("High RPM detected")
-
-        if energy is not None and energy > 28:
-            warnings.append("High energy consumption detected")
+        warnings = [rule.message for rule in get_abnormal_alert_rules(latest_values, thresholds)]
 
         recommendation = (
             "Review the detected conditions and inspect the machine."
