@@ -30,6 +30,23 @@ class AlertService:
             for row in rows
         ]
 
+    def get_alert_history(self) -> list[AlertResponse]:
+        rows = self.repository.get_alert_history()
+
+        return [
+            AlertResponse(
+                id=row.id,
+                machine_id=row.machine_id,
+                machine_name=row.machine_name,
+                severity=row.severity.value,
+                status=row.status.value,
+                alert_type=row.alert_type,
+                message=row.message,
+                created_at=row.created_at,
+            )
+            for row in rows
+        ]
+
     def acknowledge_alert(
         self,
         alert_id: UUID,

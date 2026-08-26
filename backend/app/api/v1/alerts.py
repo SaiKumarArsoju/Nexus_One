@@ -21,6 +21,16 @@ def get_active_alerts(
     return AlertService(db).get_active_alerts()
 
 
+@router.get(
+    "/alerts/history",
+    response_model=list[AlertResponse],
+)
+def get_alert_history(
+    db: Annotated[Session, Depends(get_db)],
+) -> list[AlertResponse]:
+    return AlertService(db).get_alert_history()
+
+
 @router.patch(
     "/alerts/{alert_id}/acknowledge",
     response_model=AlertResponse,

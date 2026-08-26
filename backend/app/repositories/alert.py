@@ -54,6 +54,24 @@ class AlertRepository:
 
         return self.db.scalar(statement)
 
+    def get_alert_history(self):
+        statement = (
+            select(
+                Alert.id,
+                Alert.machine_id,
+                Machine.name.label("machine_name"),
+                Alert.severity,
+                Alert.status,
+                Alert.alert_type,
+                Alert.message,
+                Alert.created_at,
+            )
+            .join(Machine, Alert.machine_id == Machine.id)
+            .order_by(Alert.created_at.desc())
+        )
+
+        return self.db.execute(statement).all()
+
     def get_alert_by_id(
         self,
         alert_id: UUID,
