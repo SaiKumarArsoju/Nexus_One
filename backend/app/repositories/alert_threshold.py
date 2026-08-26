@@ -22,3 +22,20 @@ class AlertThresholdRepository:
         sensor_type: SensorType,
     ) -> AlertThreshold | None:
         return self.db.get(AlertThreshold, sensor_type)
+
+    def update_threshold(
+        self,
+        sensor_type: SensorType,
+        threshold_value: float,
+    ) -> AlertThreshold | None:
+        threshold = self.get_by_sensor_type(sensor_type)
+
+        if threshold is None:
+            return None
+
+        threshold.threshold_value = threshold_value
+
+        self.db.commit()
+        self.db.refresh(threshold)
+
+        return threshold
