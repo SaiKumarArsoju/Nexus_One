@@ -5,6 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
+from app.api.v1.alert_thresholds import router as alert_thresholds_router
 from app.api.v1.alerts import router as alerts_router
 from app.api.v1.dashboard import router as dashboard_router
 from app.api.v1.health import router as health_router
@@ -24,6 +25,7 @@ app.include_router(health_router)
 app.include_router(dashboard_router)
 app.include_router(machines_router)
 app.include_router(alerts_router)
+app.include_router(alert_thresholds_router)
 
 app.add_middleware(
     CORSMiddleware,
