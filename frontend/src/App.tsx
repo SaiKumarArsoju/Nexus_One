@@ -4,9 +4,11 @@ import DashboardPage from "./pages/DashboardPage";
 import MachinesPage from "./pages/MachinesPage";
 import MachineDetailRoute from "./pages/MachineDetailPage";
 import AlertsPage from "./pages/AlertsPage";
+import AlertHistoryPage from "./pages/AlertHistoryPage";
 
 import {
   getAlerts,
+  getAlertHistory,
   getDashboardSummary,
   getMachineDetail,
   getMachines,
@@ -42,6 +44,9 @@ function App() {
   const [machineTrendsError, setMachineTrendsError] = useState("");
   const [alerts, setAlerts] = useState<AlertItem[]>([]);
   const [alertsError, setAlertsError] = useState("");
+  const [alertHistory, setAlertHistory] = useState<AlertItem[]>([]);
+  const [alertHistoryError, setAlertHistoryError] = useState("");
+  const [alertHistoryLoading, setAlertHistoryLoading] = useState(true);
   const [machineStatusShortcut, setMachineStatusShortcut] = useState("ALL");
   const [alertSeverityShortcut, setAlertSeverityShortcut] = useState("ALL");
 
@@ -53,8 +58,27 @@ function refreshAlerts() {
     });
 }
 
-useEffect(() => {
+function refreshAlertHistory() {
+  setAlertHistoryLoading(true);
+  setAlertHistoryError("");
+
+  getAlertHistory()
+    .then(setAlertHistory)
+    .catch((err: Error) => {
+      setAlertHistoryError(err.message);
+    })
+    .finally(() => {
+      setAlertHistoryLoading(false);
+    });
+}
+
+function refreshAlertData() {
   refreshAlerts();
+  refreshAlertHistory();
+}
+
+useEffect(() => {
+  refreshAlertData();
 }, []);
 
  useEffect(() => {
@@ -137,11 +161,21 @@ useEffect(() => {
 
           <NavLink
             to="/alerts"
+            end
             className={({ isActive }) =>
               isActive ? "nav-item active" : "nav-item"
             }
           >
-            Alerts
+            Active Alerts
+          </NavLink>
+
+          <NavLink
+            to="/alerts/history"
+            className={({ isActive }) =>
+              isActive ? "nav-item active" : "nav-item"
+            }
+          >
+            Alert History
           </NavLink>
         </nav>
 
@@ -209,13 +243,27 @@ useEffect(() => {
             />
 
             <Route
+              path="/alerts/history"
+              element={
+                <AlertHistoryPage
+                  alerts={alertHistory}
+                  error={alertHistoryError}
+                  loading={alertHistoryLoading}
+                  onSelectMachine={(machineId) => {
+                    navigate(`/machines/${machineId}`);
+                  }}
+                />
+              }
+            />
+
+            <Route
               path="/alerts"
               element={
                 <AlertsPage
                   alerts={alerts}
                   error={alertsError}
                   initialSeverityFilter={alertSeverityShortcut}
-                  onAlertsChanged={refreshAlerts}
+                  onAlertsChanged={refreshAlertData}
                   onSelectMachine={(machineId) => {
                     navigate(`/machines/${machineId}`);
                   }}

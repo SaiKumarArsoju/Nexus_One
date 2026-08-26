@@ -52,12 +52,16 @@ export type MachineTrends = {
   energy: TelemetryTrendPoint[];
 };
 
+export type AlertSeverity = "WARNING" | "CRITICAL";
+
+export type AlertStatus = "ACTIVE" | "ACKNOWLEDGED" | "RESOLVED";
+
 export type AlertItem = {
   id: string;
   machine_id: string;
   machine_name: string;
-  severity: string;
-  status: string;
+  severity: AlertSeverity;
+  status: AlertStatus;
   alert_type: string;
   message: string;
   created_at: string;

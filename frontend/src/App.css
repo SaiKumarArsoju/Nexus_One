@@ -771,3 +771,70 @@ h1 {
   border-color: #7f1d1d;
   color: #fecaca;
 }
+
+/* Alert history */
+
+.history-card:focus-visible {
+  outline: 2px solid #60a5fa;
+  outline-offset: 2px;
+}
+
+.history-card-main {
+  min-width: 0;
+  flex: 1;
+}
+
+.history-card .alert-header {
+  flex-wrap: wrap;
+}
+
+.alert-status {
+  display: inline-block;
+  padding: 5px 9px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.alert-status.active {
+  background: rgb(59 130 246 / 14%);
+  color: #60a5fa;
+}
+
+.alert-status.acknowledged {
+  background: rgb(168 85 247 / 14%);
+  color: #c084fc;
+}
+
+.alert-status.resolved {
+  background: rgb(100 116 139 / 18%);
+  color: #cbd5e1;
+}
+
+.history-card.status-resolved {
+  background: rgb(15 23 42 / 72%);
+}
+
+.history-card-meta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  color: #64748b;
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.history-card-meta time {
+  color: #94a3b8;
+}
+
+@media (max-width: 800px) {
+  .history-card {
+    flex-direction: column;
+  }
+
+  .history-card-meta {
+    align-items: flex-start;
+  }
+}

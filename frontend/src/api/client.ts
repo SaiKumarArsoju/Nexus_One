@@ -50,6 +50,10 @@ export function getAlerts(): Promise<AlertItem[]> {
   return request<AlertItem[]>("/alerts");
 }
 
+export function getAlertHistory(): Promise<AlertItem[]> {
+  return request<AlertItem[]>("/alerts/history");
+}
+
 export function acknowledgeAlert(
   alertId: string,
 ): Promise<AlertItem> {
