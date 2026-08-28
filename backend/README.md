@@ -56,6 +56,18 @@ curl -N http://127.0.0.1:8000/api/v1/events/stream
 Each connection first receives a `system.connected` event. Idle streams receive an SSE comment
 heartbeat every 15 seconds.
 
+Successful operational changes publish these compact invalidation
+events after their database transactions commit:
+
+- `telemetry.updated` when a sensor reading is ingested
+- `alert.created` when a new alert is persisted
+- `alert.updated` when an existing alert changes lifecycle state
+
+Event payloads contain only the affected sensor, machine, or alert
+identifiers and the current alert status where applicable. Clients
+should reload the relevant REST resource after receiving an event;
+the REST APIs remain the authoritative application state.
+
 When the backend `ENVIRONMENT` is `development`, publish a controlled test event from another
 terminal:
 
@@ -68,5 +80,3 @@ curl -X POST \
 
 The broadcaster is transient, in-memory, and local to one FastAPI process. It is suitable for
 local development but does not provide delivery across multiple workers or application instances.
-Real telemetry and alert lifecycle publishing will be connected in a later phase; clients should
-continue treating the existing REST endpoints as the authoritative application state.

@@ -4,6 +4,11 @@ from uuid import UUID
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
+from app.realtime import (
+    CommittedOperation,
+    PendingRealtimeEvent,
+    telemetry_updated_event,
+)
 from app.repositories import TelemetryRepository
 from app.schemas import (
     TelemetryIngestedReadingResponse,
@@ -24,6 +29,18 @@ class TelemetryService:
         value: float,
         recorded_at: datetime,
     ) -> TelemetryIngestedReadingResponse:
+        return self.ingest_reading_operation(
+            sensor_id=sensor_id,
+            value=value,
+            recorded_at=recorded_at,
+        ).result
+
+    def ingest_reading_operation(
+        self,
+        sensor_id: UUID,
+        value: float,
+        recorded_at: datetime,
+    ) -> CommittedOperation[TelemetryIngestedReadingResponse]:
         sensor = self.repository.get_sensor(sensor_id)
 
         if sensor is None:
@@ -38,7 +55,7 @@ class TelemetryService:
                 value=value,
                 recorded_at=recorded_at,
             )
-            self.alert_service.evaluate_sensor_reading(
+            alert_change = self.alert_service.evaluate_sensor_reading_change(
                 machine_id=sensor.machine_id,
                 sensor_type=sensor.sensor_type,
                 value=value,
@@ -48,11 +65,24 @@ class TelemetryService:
         self.db.commit()
         self.db.refresh(reading)
 
-        return TelemetryIngestedReadingResponse(
-            id=reading.id,
-            sensor_id=reading.sensor_id,
-            value=reading.value,
-            recorded_at=reading.recorded_at,
+        events: list[PendingRealtimeEvent] = [
+            telemetry_updated_event(
+                sensor_id=str(sensor.id),
+                machine_id=str(sensor.machine_id),
+            )
+        ]
+
+        if alert_change is not None:
+            events.append(alert_change.to_realtime_event())
+
+        return CommittedOperation(
+            result=TelemetryIngestedReadingResponse(
+                id=reading.id,
+                sensor_id=reading.sensor_id,
+                value=reading.value,
+                recorded_at=reading.recorded_at,
+            ),
+            events=tuple(events),
         )
 
     def get_machine_telemetry(

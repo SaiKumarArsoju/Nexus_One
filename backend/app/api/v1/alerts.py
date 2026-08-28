@@ -1,10 +1,12 @@
 from typing import Annotated
 from uuid import UUID
 
+from anyio import from_thread
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.database.session import get_db
+from app.realtime import publish_committed_events
 from app.schemas import AlertResponse
 from app.services import AlertService
 
@@ -40,7 +42,7 @@ def acknowledge_alert(
     db: Annotated[Session, Depends(get_db)],
 ) -> AlertResponse:
     try:
-        return AlertService(db).acknowledge_alert(alert_id)
+        operation = AlertService(db).acknowledge_alert_operation(alert_id)
     except LookupError as exc:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -52,6 +54,10 @@ def acknowledge_alert(
             detail=str(exc),
         ) from exc
 
+    from_thread.run(publish_committed_events, operation.events)
+
+    return operation.result
+
 
 @router.patch(
     "/alerts/{alert_id}/resolve",
@@ -62,20 +68,25 @@ def resolve_alert(
     db: Annotated[Session, Depends(get_db)],
 ) -> AlertResponse:
     try:
-        return AlertService(db).resolve_alert(alert_id)
+        operation = AlertService(db).resolve_alert_operation(alert_id)
     except LookupError as exc:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=str(exc),
         ) from exc
 
+    from_thread.run(publish_committed_events, operation.events)
+
+    return operation.result
+
 
 @router.post("/alerts/sync")
 def sync_alerts(
     db: Annotated[Session, Depends(get_db)],
 ) -> dict[str, int]:
-    created = AlertService(db).sync_machine_alerts()
+    operation = AlertService(db).sync_machine_alerts_operation()
+    from_thread.run(publish_committed_events, operation.events)
 
     return {
-        "created_alerts": created,
+        "created_alerts": operation.result,
     }
