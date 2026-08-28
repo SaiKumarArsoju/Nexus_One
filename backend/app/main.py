@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 from app.api.v1.alert_thresholds import router as alert_thresholds_router
 from app.api.v1.alerts import router as alerts_router
 from app.api.v1.dashboard import router as dashboard_router
+from app.api.v1.events import router as events_router
 from app.api.v1.health import router as health_router
 from app.api.v1.machines import router as machines_router
 from app.api.v1.sensors import router as sensors_router
@@ -28,6 +29,7 @@ app.include_router(machines_router)
 app.include_router(alerts_router)
 app.include_router(alert_thresholds_router)
 app.include_router(sensors_router)
+app.include_router(events_router)
 
 app.add_middleware(
     CORSMiddleware,

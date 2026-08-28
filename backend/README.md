@@ -38,3 +38,35 @@ needed. Continuous mode runs until Ctrl+C and shuts down without a traceback.
 
 This script is development tooling. It is not started by FastAPI or Docker Compose and does not
 access PostgreSQL directly.
+
+## Development SSE infrastructure
+
+The backend exposes a process-local Server-Sent Events stream for development:
+
+```text
+GET /api/v1/events/stream
+```
+
+Open the stream in one terminal:
+
+```bash
+curl -N http://127.0.0.1:8000/api/v1/events/stream
+```
+
+Each connection first receives a `system.connected` event. Idle streams receive an SSE comment
+heartbeat every 15 seconds.
+
+When the backend `ENVIRONMENT` is `development`, publish a controlled test event from another
+terminal:
+
+```bash
+curl -X POST \
+  http://127.0.0.1:8000/api/v1/events/test \
+  -H "Content-Type: application/json" \
+  -d '{"type":"system.test","data":{"message":"hello"}}'
+```
+
+The broadcaster is transient, in-memory, and local to one FastAPI process. It is suitable for
+local development but does not provide delivery across multiple workers or application instances.
+Real telemetry and alert lifecycle publishing will be connected in a later phase; clients should
+continue treating the existing REST endpoints as the authoritative application state.
