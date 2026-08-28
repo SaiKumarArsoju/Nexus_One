@@ -30,8 +30,7 @@ class TelemetryRepository:
         )
 
         self.db.add(reading)
-        self.db.commit()
-        self.db.refresh(reading)
+        self.db.flush()
 
         return reading
 

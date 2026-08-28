@@ -1,10 +1,11 @@
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.database.session import get_db
+from app.domain.alert_rules import AlertThresholdConfigurationError
 from app.schemas import (
     TelemetryIngestedReadingResponse,
     TelemetryReadingCreate,
@@ -24,11 +25,17 @@ def ingest_telemetry_reading(
     reading: TelemetryReadingCreate,
     db: Annotated[Session, Depends(get_db)],
 ) -> TelemetryIngestedReadingResponse:
-    return TelemetryService(db).ingest_reading(
-        sensor_id=reading.sensor_id,
-        value=reading.value,
-        recorded_at=reading.recorded_at,
-    )
+    try:
+        return TelemetryService(db).ingest_reading(
+            sensor_id=reading.sensor_id,
+            value=reading.value,
+            recorded_at=reading.recorded_at,
+        )
+    except AlertThresholdConfigurationError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(exc),
+        ) from exc
 
 
 @router.get(

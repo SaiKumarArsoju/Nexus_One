@@ -9,11 +9,14 @@ from app.schemas import (
     TelemetryIngestedReadingResponse,
     TelemetryReadingResponse,
 )
+from app.services.alert import AlertService
 
 
 class TelemetryService:
     def __init__(self, db: Session) -> None:
+        self.db = db
         self.repository = TelemetryRepository(db)
+        self.alert_service = AlertService(db)
 
     def ingest_reading(
         self,
@@ -29,11 +32,21 @@ class TelemetryService:
                 detail="Sensor not found",
             )
 
-        reading = self.repository.create_reading(
-            sensor_id=sensor_id,
-            value=value,
-            recorded_at=recorded_at,
-        )
+        with self.db.begin_nested():
+            reading = self.repository.create_reading(
+                sensor_id=sensor_id,
+                value=value,
+                recorded_at=recorded_at,
+            )
+            self.alert_service.evaluate_sensor_reading(
+                machine_id=sensor.machine_id,
+                sensor_type=sensor.sensor_type,
+                value=value,
+                commit=False,
+            )
+
+        self.db.commit()
+        self.db.refresh(reading)
 
         return TelemetryIngestedReadingResponse(
             id=reading.id,

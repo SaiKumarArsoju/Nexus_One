@@ -86,6 +86,8 @@ class AlertRepository:
         severity: AlertSeverity,
         alert_type: str,
         message: str,
+        *,
+        commit: bool = True,
     ) -> Alert:
         alert = Alert(
             machine_id=machine_id,
@@ -96,8 +98,12 @@ class AlertRepository:
         )
 
         self.db.add(alert)
-        self.db.commit()
-        self.db.refresh(alert)
+
+        if commit:
+            self.db.commit()
+            self.db.refresh(alert)
+        else:
+            self.db.flush()
 
         return alert
 
@@ -115,10 +121,15 @@ class AlertRepository:
     def resolve_alert(
         self,
         alert: Alert,
+        *,
+        commit: bool = True,
     ) -> Alert:
         alert.status = AlertStatus.RESOLVED
 
-        self.db.commit()
-        self.db.refresh(alert)
+        if commit:
+            self.db.commit()
+            self.db.refresh(alert)
+        else:
+            self.db.flush()
 
         return alert
