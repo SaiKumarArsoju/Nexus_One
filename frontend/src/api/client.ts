@@ -1,9 +1,11 @@
 import type {
   AlertItem,
+  AlertThreshold,
   DashboardSummary,
   MachineDetail,
   MachineFleetItem,
   MachineTrends,
+  SensorType,
 } from "../types/api";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
@@ -52,6 +54,28 @@ export function getAlerts(): Promise<AlertItem[]> {
 
 export function getAlertHistory(): Promise<AlertItem[]> {
   return request<AlertItem[]>("/alerts/history");
+}
+
+export function getAlertThresholds(): Promise<AlertThreshold[]> {
+  return request<AlertThreshold[]>("/alert-thresholds");
+}
+
+export function updateAlertThreshold(
+  sensorType: SensorType,
+  thresholdValue: number,
+): Promise<AlertThreshold> {
+  return request<AlertThreshold>(
+    `/alert-thresholds/${sensorType}`,
+    {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        threshold_value: thresholdValue,
+      }),
+    },
+  );
 }
 
 export function acknowledgeAlert(

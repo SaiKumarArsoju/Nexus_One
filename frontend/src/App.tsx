@@ -5,14 +5,17 @@ import MachinesPage from "./pages/MachinesPage";
 import MachineDetailRoute from "./pages/MachineDetailPage";
 import AlertsPage from "./pages/AlertsPage";
 import AlertHistoryPage from "./pages/AlertHistoryPage";
+import AlertThresholdsPage from "./pages/AlertThresholdsPage";
 
 import {
   getAlerts,
   getAlertHistory,
+  getAlertThresholds,
   getDashboardSummary,
   getMachineDetail,
   getMachines,
   getMachineTrends,
+  updateAlertThreshold,
 } from "./api/client";
 
 import {
@@ -24,10 +27,12 @@ import {
 
 import type {
   AlertItem,
+  AlertThreshold,
   DashboardSummary,
   MachineDetail,
   MachineFleetItem,
   MachineTrends,
+  SensorType,
 } from "./types/api";
 
 function App() {
@@ -47,6 +52,9 @@ function App() {
   const [alertHistory, setAlertHistory] = useState<AlertItem[]>([]);
   const [alertHistoryError, setAlertHistoryError] = useState("");
   const [alertHistoryLoading, setAlertHistoryLoading] = useState(true);
+  const [alertThresholds, setAlertThresholds] = useState<AlertThreshold[]>([]);
+  const [alertThresholdsError, setAlertThresholdsError] = useState("");
+  const [alertThresholdsLoading, setAlertThresholdsLoading] = useState(true);
   const [machineStatusShortcut, setMachineStatusShortcut] = useState("ALL");
   const [alertSeverityShortcut, setAlertSeverityShortcut] = useState("ALL");
 
@@ -80,6 +88,40 @@ function refreshAlertData() {
 useEffect(() => {
   refreshAlertData();
 }, []);
+
+useEffect(() => {
+  setAlertThresholdsLoading(true);
+  setAlertThresholdsError("");
+
+  getAlertThresholds()
+    .then(setAlertThresholds)
+    .catch((err: Error) => {
+      setAlertThresholdsError(err.message);
+    })
+    .finally(() => {
+      setAlertThresholdsLoading(false);
+    });
+}, []);
+
+async function handleUpdateAlertThreshold(
+  sensorType: SensorType,
+  thresholdValue: number,
+): Promise<AlertThreshold> {
+  const updatedThreshold = await updateAlertThreshold(
+    sensorType,
+    thresholdValue,
+  );
+
+  setAlertThresholds((currentThresholds) =>
+    currentThresholds.map((threshold) =>
+      threshold.sensor_type === updatedThreshold.sensor_type
+        ? updatedThreshold
+        : threshold,
+    ),
+  );
+
+  return updatedThreshold;
+}
 
  useEffect(() => {
   if (!selectedMachineId) {
@@ -177,6 +219,15 @@ useEffect(() => {
           >
             Alert History
           </NavLink>
+
+          <NavLink
+            to="/alert-thresholds"
+            className={({ isActive }) =>
+              isActive ? "nav-item active" : "nav-item"
+            }
+          >
+            Alert Thresholds
+          </NavLink>
         </nav>
 
         <div className="sidebar-status">
@@ -267,6 +318,18 @@ useEffect(() => {
                   onSelectMachine={(machineId) => {
                     navigate(`/machines/${machineId}`);
                   }}
+                />
+              }
+            />
+
+            <Route
+              path="/alert-thresholds"
+              element={
+                <AlertThresholdsPage
+                  thresholds={alertThresholds}
+                  error={alertThresholdsError}
+                  loading={alertThresholdsLoading}
+                  onUpdateThreshold={handleUpdateAlertThreshold}
                 />
               }
             />

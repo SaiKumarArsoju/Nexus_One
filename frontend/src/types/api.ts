@@ -56,6 +56,22 @@ export type AlertSeverity = "WARNING" | "CRITICAL";
 
 export type AlertStatus = "ACTIVE" | "ACKNOWLEDGED" | "RESOLVED";
 
+export type SensorType =
+  | "TEMPERATURE"
+  | "PRESSURE"
+  | "VIBRATION"
+  | "RPM"
+  | "ENERGY";
+
+export type AlertThreshold = {
+  sensor_type: SensorType;
+  threshold_value: number;
+  unit: string;
+  severity: AlertSeverity;
+  alert_type: string;
+  updated_at: string;
+};
+
 export type AlertItem = {
   id: string;
   machine_id: string;
