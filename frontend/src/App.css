@@ -105,7 +105,18 @@ button {
   width: 9px;
   height: 9px;
   border-radius: 50%;
+}
+
+.status-dot.connected {
   background: #22c55e;
+}
+
+.status-dot.connecting {
+  background: #f59e0b;
+}
+
+.status-dot.reconnecting {
+  background: #ef4444;
 }
 
 .content {

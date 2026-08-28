@@ -8,6 +8,7 @@ import {
   NavLink,
   Route,
   Routes,
+  matchPath,
   useLocation,
   useNavigate,
 } from "react-router-dom";
@@ -24,6 +25,9 @@ import {
   updateAlertThreshold,
 } from "./api/client";
 import { usePolling } from "./hooks/usePolling";
+import {
+  useRealtimeEvents,
+} from "./hooks/useRealtimeEvents";
 import AlertHistoryPage from "./pages/AlertHistoryPage";
 import AlertsPage from "./pages/AlertsPage";
 import AlertThresholdsPage from "./pages/AlertThresholdsPage";
@@ -32,6 +36,7 @@ import MachineDetailRoute from "./pages/MachineDetailPage";
 import MachinesPage from "./pages/MachinesPage";
 
 import type {
+  AlertChangedEventData,
   AlertItem,
   AlertThreshold,
   DashboardSummary,
@@ -39,11 +44,19 @@ import type {
   MachineFleetItem,
   MachineTrends,
   SensorType,
+  TelemetryUpdatedEventData,
 } from "./types/api";
 
 type CurrentExecutionCheck = () => boolean;
+type ForcedRefresh = () => Promise<void>;
 
 const isAlwaysCurrent = () => true;
+const REALTIME_REFRESH_DELAY_MS = 200;
+const REALTIME_STATUS_LABELS = {
+  connecting: "Realtime Connecting",
+  connected: "Realtime Connected",
+  reconnecting: "Realtime Reconnecting",
+} as const;
 
 function errorMessage(error: unknown): string {
   return error instanceof Error
@@ -98,6 +111,39 @@ function App() {
   const alertHistoryLoadedRef = useRef(false);
   const machineDetailLoadedRef = useRef(false);
   const machineTrendsLoadedRef = useRef(false);
+  const realtimeRefreshTimersRef = useRef(
+    new Map<string, number>(),
+  );
+
+  const scheduleRealtimeRefresh = useCallback(
+    (domain: string, refresh: ForcedRefresh) => {
+      if (
+        document.visibilityState !== "visible" ||
+        realtimeRefreshTimersRef.current.has(domain)
+      ) {
+        return;
+      }
+
+      const timeoutId = window.setTimeout(() => {
+        realtimeRefreshTimersRef.current.delete(domain);
+        void refresh();
+      }, REALTIME_REFRESH_DELAY_MS);
+
+      realtimeRefreshTimersRef.current.set(domain, timeoutId);
+    },
+    [],
+  );
+
+  useEffect(
+    () => () => {
+      for (const timeoutId of realtimeRefreshTimersRef.current.values()) {
+        window.clearTimeout(timeoutId);
+      }
+
+      realtimeRefreshTimersRef.current.clear();
+    },
+    [],
+  );
 
   const refreshSummary = useCallback(
     async (isCurrent: CurrentExecutionCheck) => {
@@ -264,17 +310,17 @@ function App() {
       });
   }, []);
 
-  usePolling(refreshDashboard, {
+  const refreshDashboardNow = usePolling(refreshDashboard, {
     enabled: pathname === "/",
     pollingKey: pathname,
   });
 
-  usePolling(refreshMachines, {
+  const refreshMachinesNow = usePolling(refreshMachines, {
     enabled: pathname === "/machines",
     pollingKey: pathname,
   });
 
-  usePolling(refreshMachineData, {
+  const refreshMachineDataNow = usePolling(refreshMachineData, {
     enabled:
       pathname.startsWith("/machines/") &&
       selectedMachineId !== null,
@@ -286,9 +332,93 @@ function App() {
     pollingKey: pathname,
   });
 
-  usePolling(refreshAlertHistory, {
+  const refreshAlertHistoryNow = usePolling(refreshAlertHistory, {
     enabled: pathname === "/alerts/history",
     pollingKey: pathname,
+  });
+
+  const routeMachineId =
+    matchPath("/machines/:machineId", pathname)?.params
+      .machineId ?? null;
+
+  const handleTelemetryUpdated = useCallback(
+    (data: TelemetryUpdatedEventData) => {
+      if (pathname === "/") {
+        scheduleRealtimeRefresh(
+          "dashboard",
+          refreshDashboardNow,
+        );
+      } else if (pathname === "/machines") {
+        scheduleRealtimeRefresh("machines", refreshMachinesNow);
+      } else if (
+        routeMachineId !== null &&
+        selectedMachineId === routeMachineId &&
+        data.machine_id === routeMachineId
+      ) {
+        scheduleRealtimeRefresh(
+          `machine:${routeMachineId}`,
+          refreshMachineDataNow,
+        );
+      }
+    },
+    [
+      pathname,
+      refreshDashboardNow,
+      refreshMachineDataNow,
+      refreshMachinesNow,
+      routeMachineId,
+      scheduleRealtimeRefresh,
+      selectedMachineId,
+    ],
+  );
+
+  const handleAlertRealtimeEvent = useCallback(
+    (data: AlertChangedEventData) => {
+      if (pathname === "/") {
+        scheduleRealtimeRefresh(
+          "dashboard",
+          refreshDashboardNow,
+        );
+      } else if (pathname === "/machines") {
+        scheduleRealtimeRefresh("machines", refreshMachinesNow);
+      } else if (
+        routeMachineId !== null &&
+        selectedMachineId === routeMachineId &&
+        data.machine_id === routeMachineId
+      ) {
+        scheduleRealtimeRefresh(
+          `machine:${routeMachineId}`,
+          refreshMachineDataNow,
+        );
+      } else if (pathname === "/alerts") {
+        scheduleRealtimeRefresh(
+          "active-alerts",
+          refreshActiveAlertsNow,
+        );
+      } else if (pathname === "/alerts/history") {
+        scheduleRealtimeRefresh(
+          "alert-history",
+          refreshAlertHistoryNow,
+        );
+      }
+    },
+    [
+      pathname,
+      refreshActiveAlertsNow,
+      refreshAlertHistoryNow,
+      refreshDashboardNow,
+      refreshMachineDataNow,
+      refreshMachinesNow,
+      routeMachineId,
+      scheduleRealtimeRefresh,
+      selectedMachineId,
+    ],
+  );
+
+  const realtimeConnectionState = useRealtimeEvents({
+    onTelemetryUpdated: handleTelemetryUpdated,
+    onAlertCreated: handleAlertRealtimeEvent,
+    onAlertUpdated: handleAlertRealtimeEvent,
   });
 
   const handleAlertsChanged = useCallback(async () => {
@@ -380,8 +510,10 @@ function App() {
         </nav>
 
         <div className="sidebar-status">
-          <span className="status-dot" />
-          Backend Connected
+          <span
+            className={`status-dot ${realtimeConnectionState}`}
+          />
+          {REALTIME_STATUS_LABELS[realtimeConnectionState]}
         </div>
       </aside>
 

@@ -82,3 +82,22 @@ export type AlertItem = {
   message: string;
   created_at: string;
 };
+
+export type RealtimeEvent<TData> = {
+  id: string;
+  type: string;
+  occurred_at: string;
+  resource_id: string | null;
+  data: TData;
+};
+
+export type TelemetryUpdatedEventData = {
+  sensor_id: string;
+  machine_id: string;
+};
+
+export type AlertChangedEventData = {
+  alert_id: string;
+  machine_id: string;
+  status: AlertStatus;
+};
