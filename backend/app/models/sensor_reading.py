@@ -4,7 +4,7 @@ from datetime import datetime
 from typing import TYPE_CHECKING
 from uuid import UUID
 
-from sqlalchemy import DateTime, Float, ForeignKey, func
+from sqlalchemy import DateTime, Float, ForeignKey, Index, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database.base import Base
@@ -16,11 +16,18 @@ if TYPE_CHECKING:
 
 class SensorReading(UUIDPrimaryKeyMixin, Base):
     __tablename__ = "sensor_readings"
+    __table_args__ = (
+        Index(
+            "ix_sensor_readings_sensor_id_recorded_at_id",
+            "sensor_id",
+            "recorded_at",
+            "id",
+        ),
+    )
 
     sensor_id: Mapped[UUID] = mapped_column(
         ForeignKey("sensors.id", ondelete="CASCADE"),
         nullable=False,
-        index=True,
     )
 
     value: Mapped[float] = mapped_column(

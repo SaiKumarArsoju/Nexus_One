@@ -2,7 +2,8 @@ from typing import Annotated
 from uuid import UUID
 
 from anyio import from_thread
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from pydantic import AwareDatetime
 from sqlalchemy.orm import Session
 
 from app.database.session import get_db
@@ -14,8 +15,60 @@ from app.schemas import (
     TelemetryReadingResponse,
 )
 from app.services import TelemetryService
+from app.services.telemetry import (
+    DEFAULT_TELEMETRY_HISTORY_LIMIT,
+    MAX_TELEMETRY_HISTORY_LIMIT,
+)
 
 router = APIRouter(prefix="/api/v1", tags=["Telemetry"])
+
+
+@router.get(
+    "/telemetry/readings",
+    response_model=list[TelemetryIngestedReadingResponse],
+)
+def get_historical_telemetry_readings(
+    sensor_id: Annotated[
+        UUID,
+        Query(description="Sensor whose readings should be returned"),
+    ],
+    db: Annotated[Session, Depends(get_db)],
+    start: Annotated[
+        AwareDatetime | None,
+        Query(description="Inclusive timezone-aware start timestamp"),
+    ] = None,
+    end: Annotated[
+        AwareDatetime | None,
+        Query(description="Inclusive timezone-aware end timestamp"),
+    ] = None,
+    limit: Annotated[
+        int,
+        Query(
+            ge=1,
+            le=MAX_TELEMETRY_HISTORY_LIMIT,
+            description=(
+                "Maximum recent readings to select before returning them oldest to newest"
+            ),
+        ),
+    ] = DEFAULT_TELEMETRY_HISTORY_LIMIT,
+) -> list[TelemetryIngestedReadingResponse]:
+    try:
+        return TelemetryService(db).get_historical_readings(
+            sensor_id=sensor_id,
+            start=start,
+            end=end,
+            limit=limit,
+        )
+    except LookupError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(exc),
+        ) from exc
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail=str(exc),
+        ) from exc
 
 
 @router.post(

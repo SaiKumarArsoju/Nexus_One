@@ -39,6 +39,19 @@ needed. Continuous mode runs until Ctrl+C and shuts down without a traceback.
 This script is development tooling. It is not started by FastAPI or Docker Compose and does not
 access PostgreSQL directly.
 
+## Historical telemetry
+
+Query recent raw readings for one sensor with optional inclusive,
+timezone-aware bounds:
+
+~~~text
+GET /api/v1/telemetry/readings?sensor_id=<uuid>&start=<ISO8601>&end=<ISO8601>&limit=500
+~~~
+
+The API selects the newest requested readings within the range, then
+returns that bounded set oldest to newest. The default limit is 500 and
+the maximum is 5000.
+
 ## Development SSE infrastructure
 
 The backend exposes a process-local Server-Sent Events stream for development:

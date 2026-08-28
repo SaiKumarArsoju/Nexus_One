@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import UTC, datetime
 from uuid import UUID
 
 from fastapi import HTTPException
@@ -15,6 +15,9 @@ from app.schemas import (
     TelemetryReadingResponse,
 )
 from app.services.alert import AlertService
+
+DEFAULT_TELEMETRY_HISTORY_LIMIT = 500
+MAX_TELEMETRY_HISTORY_LIMIT = 5_000
 
 
 class TelemetryService:
@@ -110,3 +113,54 @@ class TelemetryService:
             )
             for row in rows
         ]
+
+    def get_historical_readings(
+        self,
+        *,
+        sensor_id: UUID,
+        start: datetime | None = None,
+        end: datetime | None = None,
+        limit: int = DEFAULT_TELEMETRY_HISTORY_LIMIT,
+    ) -> list[TelemetryIngestedReadingResponse]:
+        if self.repository.get_sensor(sensor_id) is None:
+            raise LookupError("Sensor not found")
+
+        start_utc = self._to_utc(start, parameter_name="start")
+        end_utc = self._to_utc(end, parameter_name="end")
+
+        if start_utc is not None and end_utc is not None and start_utc > end_utc:
+            raise ValueError("start must be less than or equal to end")
+
+        if not 1 <= limit <= MAX_TELEMETRY_HISTORY_LIMIT:
+            raise ValueError(f"limit must be between 1 and {MAX_TELEMETRY_HISTORY_LIMIT}")
+
+        readings = self.repository.list_readings(
+            sensor_id=sensor_id,
+            start=start_utc,
+            end=end_utc,
+            limit=limit,
+        )
+
+        return [
+            TelemetryIngestedReadingResponse(
+                id=reading.id,
+                sensor_id=reading.sensor_id,
+                value=reading.value,
+                recorded_at=reading.recorded_at,
+            )
+            for reading in readings
+        ]
+
+    @staticmethod
+    def _to_utc(
+        value: datetime | None,
+        *,
+        parameter_name: str,
+    ) -> datetime | None:
+        if value is None:
+            return None
+
+        if value.utcoffset() is None:
+            raise ValueError(f"{parameter_name} must include a timezone")
+
+        return value.astimezone(UTC)

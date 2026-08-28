@@ -34,6 +34,31 @@ class TelemetryRepository:
 
         return reading
 
+    def list_readings(
+        self,
+        *,
+        sensor_id: UUID,
+        start: datetime | None = None,
+        end: datetime | None = None,
+        limit: int,
+    ) -> list[SensorReading]:
+        statement = select(SensorReading).where(SensorReading.sensor_id == sensor_id)
+
+        if start is not None:
+            statement = statement.where(SensorReading.recorded_at >= start)
+
+        if end is not None:
+            statement = statement.where(SensorReading.recorded_at <= end)
+
+        newest_readings = self.db.scalars(
+            statement.order_by(
+                SensorReading.recorded_at.desc(),
+                SensorReading.id.desc(),
+            ).limit(limit)
+        ).all()
+
+        return list(reversed(newest_readings))
+
     def get_machine_telemetry(self, machine_id: UUID):
         statement = (
             select(
