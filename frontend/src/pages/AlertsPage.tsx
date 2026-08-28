@@ -13,7 +13,7 @@ type AlertsPageProps = {
   error: string;
   onSelectMachine: (machineId: string) => void;
   initialSeverityFilter: string;
-  onAlertsChanged: () => void;
+  onAlertsChanged: () => Promise<void>;
 };
 
 function AlertsPage({
@@ -58,7 +58,7 @@ function AlertsPage({
 
   try {
     await acknowledgeAlert(alertId);
-    onAlertsChanged();
+    await onAlertsChanged();
   } catch (err) {
     setActionError(
       err instanceof Error
@@ -77,7 +77,7 @@ async function handleResolve(
 
   try {
     await resolveAlert(alertId);
-    onAlertsChanged();
+    await onAlertsChanged();
   } catch (err) {
     setActionError(
       err instanceof Error

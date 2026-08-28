@@ -1,15 +1,21 @@
-import { useEffect, useState } from "react";
-import "./App.css";
-import DashboardPage from "./pages/DashboardPage";
-import MachinesPage from "./pages/MachinesPage";
-import MachineDetailRoute from "./pages/MachineDetailPage";
-import AlertsPage from "./pages/AlertsPage";
-import AlertHistoryPage from "./pages/AlertHistoryPage";
-import AlertThresholdsPage from "./pages/AlertThresholdsPage";
-
 import {
-  getAlerts,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
+import {
+  NavLink,
+  Route,
+  Routes,
+  useLocation,
+  useNavigate,
+} from "react-router-dom";
+
+import "./App.css";
+import {
   getAlertHistory,
+  getAlerts,
   getAlertThresholds,
   getDashboardSummary,
   getMachineDetail,
@@ -17,13 +23,13 @@ import {
   getMachineTrends,
   updateAlertThreshold,
 } from "./api/client";
-
-import {
-  NavLink,
-  Route,
-  Routes,
-  useNavigate,
-} from "react-router-dom";
+import { usePolling } from "./hooks/usePolling";
+import AlertHistoryPage from "./pages/AlertHistoryPage";
+import AlertsPage from "./pages/AlertsPage";
+import AlertThresholdsPage from "./pages/AlertThresholdsPage";
+import DashboardPage from "./pages/DashboardPage";
+import MachineDetailRoute from "./pages/MachineDetailPage";
+import MachinesPage from "./pages/MachinesPage";
 
 import type {
   AlertItem,
@@ -35,139 +41,282 @@ import type {
   SensorType,
 } from "./types/api";
 
+type CurrentExecutionCheck = () => boolean;
+
+const isAlwaysCurrent = () => true;
+
+function errorMessage(error: unknown): string {
+  return error instanceof Error
+    ? error.message
+    : "An unexpected request error occurred.";
+}
+
 function App() {
   const navigate = useNavigate();
+  const { pathname } = useLocation();
 
-  const [summary, setSummary] = useState<DashboardSummary | null>(null);
+  const [summary, setSummary] = useState<DashboardSummary | null>(
+    null,
+  );
   const [error, setError] = useState("");
   const [machines, setMachines] = useState<MachineFleetItem[]>([]);
   const [machinesError, setMachinesError] = useState("");
-  const [selectedMachineId, setSelectedMachineId] = useState<string | null>(null);
-  const [machineDetail, setMachineDetail] = useState<MachineDetail | null>(null);
-  const [machineDetailError, setMachineDetailError] = useState("");
-  const [machineTrends, setMachineTrends] = useState<MachineTrends | null>(null);
-  const [machineTrendsError, setMachineTrendsError] = useState("");
+  const [selectedMachineId, setSelectedMachineId] = useState<
+    string | null
+  >(null);
+  const [machineDetail, setMachineDetail] =
+    useState<MachineDetail | null>(null);
+  const [machineDetailError, setMachineDetailError] =
+    useState("");
+  const [machineTrends, setMachineTrends] =
+    useState<MachineTrends | null>(null);
+  const [machineTrendsError, setMachineTrendsError] =
+    useState("");
   const [alerts, setAlerts] = useState<AlertItem[]>([]);
   const [alertsError, setAlertsError] = useState("");
-  const [alertHistory, setAlertHistory] = useState<AlertItem[]>([]);
+  const [alertHistory, setAlertHistory] = useState<AlertItem[]>(
+    [],
+  );
   const [alertHistoryError, setAlertHistoryError] = useState("");
-  const [alertHistoryLoading, setAlertHistoryLoading] = useState(true);
-  const [alertThresholds, setAlertThresholds] = useState<AlertThreshold[]>([]);
-  const [alertThresholdsError, setAlertThresholdsError] = useState("");
-  const [alertThresholdsLoading, setAlertThresholdsLoading] = useState(true);
-  const [machineStatusShortcut, setMachineStatusShortcut] = useState("ALL");
-  const [alertSeverityShortcut, setAlertSeverityShortcut] = useState("ALL");
+  const [alertHistoryLoading, setAlertHistoryLoading] =
+    useState(true);
+  const [alertThresholds, setAlertThresholds] = useState<
+    AlertThreshold[]
+  >([]);
+  const [alertThresholdsError, setAlertThresholdsError] =
+    useState("");
+  const [alertThresholdsLoading, setAlertThresholdsLoading] =
+    useState(true);
+  const [machineStatusShortcut, setMachineStatusShortcut] =
+    useState("ALL");
+  const [alertSeverityShortcut, setAlertSeverityShortcut] =
+    useState("ALL");
 
-function refreshAlerts() {
-  getAlerts()
-    .then(setAlerts)
-    .catch((err: Error) => {
-      setAlertsError(err.message);
-    });
-}
+  const summaryLoadedRef = useRef(false);
+  const machinesLoadedRef = useRef(false);
+  const alertsLoadedRef = useRef(false);
+  const alertHistoryLoadedRef = useRef(false);
+  const machineDetailLoadedRef = useRef(false);
+  const machineTrendsLoadedRef = useRef(false);
 
-function refreshAlertHistory() {
-  setAlertHistoryLoading(true);
-  setAlertHistoryError("");
+  const refreshSummary = useCallback(
+    async (isCurrent: CurrentExecutionCheck) => {
+      try {
+        const nextSummary = await getDashboardSummary();
 
-  getAlertHistory()
-    .then(setAlertHistory)
-    .catch((err: Error) => {
-      setAlertHistoryError(err.message);
-    })
-    .finally(() => {
-      setAlertHistoryLoading(false);
-    });
-}
-
-function refreshAlertData() {
-  refreshAlerts();
-  refreshAlertHistory();
-}
-
-useEffect(() => {
-  refreshAlertData();
-}, []);
-
-useEffect(() => {
-  setAlertThresholdsLoading(true);
-  setAlertThresholdsError("");
-
-  getAlertThresholds()
-    .then(setAlertThresholds)
-    .catch((err: Error) => {
-      setAlertThresholdsError(err.message);
-    })
-    .finally(() => {
-      setAlertThresholdsLoading(false);
-    });
-}, []);
-
-async function handleUpdateAlertThreshold(
-  sensorType: SensorType,
-  thresholdValue: number,
-): Promise<AlertThreshold> {
-  const updatedThreshold = await updateAlertThreshold(
-    sensorType,
-    thresholdValue,
+        if (isCurrent()) {
+          setSummary(nextSummary);
+          setError("");
+          summaryLoadedRef.current = true;
+        }
+      } catch (requestError) {
+        if (isCurrent() && !summaryLoadedRef.current) {
+          setError(errorMessage(requestError));
+        }
+      }
+    },
+    [],
   );
 
-  setAlertThresholds((currentThresholds) =>
-    currentThresholds.map((threshold) =>
-      threshold.sensor_type === updatedThreshold.sensor_type
-        ? updatedThreshold
-        : threshold,
-    ),
+  const refreshMachines = useCallback(
+    async (isCurrent: CurrentExecutionCheck) => {
+      try {
+        const nextMachines = await getMachines();
+
+        if (isCurrent()) {
+          setMachines(nextMachines);
+          setMachinesError("");
+          machinesLoadedRef.current = true;
+        }
+      } catch (requestError) {
+        if (isCurrent() && !machinesLoadedRef.current) {
+          setMachinesError(errorMessage(requestError));
+        }
+      }
+    },
+    [],
   );
 
-  return updatedThreshold;
-}
+  const refreshAlerts = useCallback(
+    async (isCurrent: CurrentExecutionCheck) => {
+      try {
+        const nextAlerts = await getAlerts();
 
- useEffect(() => {
-  if (!selectedMachineId) {
-    return;
+        if (isCurrent()) {
+          setAlerts(nextAlerts);
+          setAlertsError("");
+          alertsLoadedRef.current = true;
+        }
+      } catch (requestError) {
+        if (isCurrent() && !alertsLoadedRef.current) {
+          setAlertsError(errorMessage(requestError));
+        }
+      }
+    },
+    [],
+  );
+
+  const refreshAlertHistory = useCallback(
+    async (isCurrent: CurrentExecutionCheck) => {
+      const isInitialLoad = !alertHistoryLoadedRef.current;
+
+      if (isInitialLoad && isCurrent()) {
+        setAlertHistoryLoading(true);
+        setAlertHistoryError("");
+      }
+
+      try {
+        const nextHistory = await getAlertHistory();
+
+        if (isCurrent()) {
+          setAlertHistory(nextHistory);
+          setAlertHistoryError("");
+          alertHistoryLoadedRef.current = true;
+        }
+      } catch (requestError) {
+        if (isCurrent() && !alertHistoryLoadedRef.current) {
+          setAlertHistoryError(errorMessage(requestError));
+        }
+      } finally {
+        if (isCurrent() && isInitialLoad) {
+          setAlertHistoryLoading(false);
+        }
+      }
+    },
+    [],
+  );
+
+  const refreshDashboard = useCallback(
+    async (isCurrent: CurrentExecutionCheck) => {
+      await Promise.all([
+        refreshSummary(isCurrent),
+        refreshMachines(isCurrent),
+        refreshAlerts(isCurrent),
+      ]);
+    },
+    [refreshAlerts, refreshMachines, refreshSummary],
+  );
+
+  const refreshMachineData = useCallback(
+    async (isCurrent: CurrentExecutionCheck) => {
+      if (!selectedMachineId) {
+        return;
+      }
+
+      const machineId = selectedMachineId;
+      const [detailResult, trendsResult] =
+        await Promise.allSettled([
+          getMachineDetail(machineId),
+          getMachineTrends(machineId),
+        ]);
+
+      if (!isCurrent()) {
+        return;
+      }
+
+      if (detailResult.status === "fulfilled") {
+        setMachineDetail(detailResult.value);
+        setMachineDetailError("");
+        machineDetailLoadedRef.current = true;
+      } else if (!machineDetailLoadedRef.current) {
+        setMachineDetailError(
+          errorMessage(detailResult.reason),
+        );
+      }
+
+      if (trendsResult.status === "fulfilled") {
+        setMachineTrends(trendsResult.value);
+        setMachineTrendsError("");
+        machineTrendsLoadedRef.current = true;
+      } else if (!machineTrendsLoadedRef.current) {
+        setMachineTrendsError(
+          errorMessage(trendsResult.reason),
+        );
+      }
+    },
+    [selectedMachineId],
+  );
+
+  useEffect(() => {
+    if (!selectedMachineId) {
+      return;
+    }
+
+    machineDetailLoadedRef.current = false;
+    machineTrendsLoadedRef.current = false;
+    setMachineDetail(null);
+    setMachineDetailError("");
+    setMachineTrends(null);
+    setMachineTrendsError("");
+  }, [selectedMachineId]);
+
+  useEffect(() => {
+    setAlertThresholdsLoading(true);
+    setAlertThresholdsError("");
+
+    getAlertThresholds()
+      .then(setAlertThresholds)
+      .catch((requestError: Error) => {
+        setAlertThresholdsError(requestError.message);
+      })
+      .finally(() => {
+        setAlertThresholdsLoading(false);
+      });
+  }, []);
+
+  usePolling(refreshDashboard, {
+    enabled: pathname === "/",
+    pollingKey: pathname,
+  });
+
+  usePolling(refreshMachines, {
+    enabled: pathname === "/machines",
+    pollingKey: pathname,
+  });
+
+  usePolling(refreshMachineData, {
+    enabled:
+      pathname.startsWith("/machines/") &&
+      selectedMachineId !== null,
+    pollingKey: selectedMachineId ?? pathname,
+  });
+
+  const refreshActiveAlertsNow = usePolling(refreshAlerts, {
+    enabled: pathname === "/alerts",
+    pollingKey: pathname,
+  });
+
+  usePolling(refreshAlertHistory, {
+    enabled: pathname === "/alerts/history",
+    pollingKey: pathname,
+  });
+
+  const handleAlertsChanged = useCallback(async () => {
+    await Promise.all([
+      refreshActiveAlertsNow(),
+      refreshAlertHistory(isAlwaysCurrent),
+    ]);
+  }, [refreshActiveAlertsNow, refreshAlertHistory]);
+
+  async function handleUpdateAlertThreshold(
+    sensorType: SensorType,
+    thresholdValue: number,
+  ): Promise<AlertThreshold> {
+    const updatedThreshold = await updateAlertThreshold(
+      sensorType,
+      thresholdValue,
+    );
+
+    setAlertThresholds((currentThresholds) =>
+      currentThresholds.map((threshold) =>
+        threshold.sensor_type === updatedThreshold.sensor_type
+          ? updatedThreshold
+          : threshold,
+      ),
+    );
+
+    return updatedThreshold;
   }
-
-  setMachineTrends(null);
-  setMachineTrendsError("");
-
-  getMachineTrends(selectedMachineId)
-    .then(setMachineTrends)
-    .catch((err: Error) => {
-      setMachineTrendsError(err.message);
-    });
-}, [selectedMachineId]);
-
- useEffect(() => {
-  if (!selectedMachineId) {
-    return;
-  }
-
-  setMachineDetail(null);
-  setMachineDetailError("");
-
-  getMachineDetail(selectedMachineId)
-    .then(setMachineDetail)
-    .catch((err: Error) => {
-      setMachineDetailError(err.message);
-    });
-}, [selectedMachineId]);
-
- useEffect(() => {
-  getDashboardSummary()
-    .then(setSummary)
-    .catch((err: Error) => {
-      setError(err.message);
-    });
-}, []);
-
- useEffect(() => {
-  getMachines()
-    .then(setMachines)
-    .catch((err: Error) => {
-      setMachinesError(err.message);
-    });
-}, []);
 
   return (
     <div className="app-shell">
@@ -196,7 +345,7 @@ async function handleUpdateAlertThreshold(
             to="/machines"
             className={({ isActive }) =>
               isActive ? "nav-item active" : "nav-item"
-          }
+            }
           >
             Machines
           </NavLink>
@@ -237,107 +386,105 @@ async function handleUpdateAlertThreshold(
       </aside>
 
       <main className="content">
-          <Routes>
-            <Route
-              path="/"
-              element={
-                <DashboardPage
-                  summary={summary}
-                  error={error}
-                  alerts={alerts}
-                  machines={machines}
-                  onMachinesShortcut={(status) => {
-                    setMachineStatusShortcut(status);
-                    navigate(`/machines?status=${status}`);
-                  }}
-                  onAlertsShortcut={(severity) => {
-                    setAlertSeverityShortcut(severity);
+        <Routes>
+          <Route
+            path="/"
+            element={
+              <DashboardPage
+                summary={summary}
+                error={error}
+                alerts={alerts}
+                machines={machines}
+                onMachinesShortcut={(status) => {
+                  setMachineStatusShortcut(status);
+                  navigate(`/machines?status=${status}`);
+                }}
+                onAlertsShortcut={(severity) => {
+                  setAlertSeverityShortcut(severity);
+                  navigate(
+                    severity === "ALL"
+                      ? "/alerts"
+                      : `/alerts?severity=${severity}`,
+                  );
+                }}
+                onAlertMachineClick={(machineId) => {
+                  navigate(`/machines/${machineId}`);
+                }}
+              />
+            }
+          />
 
-                    navigate(
-                      severity === "ALL"
-                        ? "/alerts"
-                        : `/alerts?severity=${severity}`,
-                    );
-                  }}
-                  onAlertMachineClick={(machineId) => {
-                    navigate(`/machines/${machineId}`);
-                  }}
-                />
-              }
-            />
+          <Route
+            path="/machines"
+            element={
+              <MachinesPage
+                machines={machines}
+                error={machinesError}
+                initialStatusFilter={machineStatusShortcut}
+                onSelectMachine={(machineId) => {
+                  navigate(`/machines/${machineId}`);
+                }}
+              />
+            }
+          />
 
-            <Route
-              path="/machines"
-              element={
-                <MachinesPage
-                  machines={machines}
-                  error={machinesError}
-                  initialStatusFilter={machineStatusShortcut}
-                  onSelectMachine={(machineId) => {
-                    navigate(`/machines/${machineId}`);
-                  }}
-                />
-              }
-            />
+          <Route
+            path="/machines/:machineId"
+            element={
+              <MachineDetailRoute
+                machine={machineDetail}
+                error={machineDetailError}
+                trends={machineTrends}
+                trendsError={machineTrendsError}
+                setSelectedMachineId={setSelectedMachineId}
+              />
+            }
+          />
 
-            <Route
-              path="/machines/:machineId"
-              element={
-                <MachineDetailRoute
-                  machine={machineDetail}
-                  error={machineDetailError}
-                  trends={machineTrends}
-                  trendsError={machineTrendsError}
-                  setSelectedMachineId={setSelectedMachineId}
-                />
-              }
-            />
+          <Route
+            path="/alerts/history"
+            element={
+              <AlertHistoryPage
+                alerts={alertHistory}
+                error={alertHistoryError}
+                loading={alertHistoryLoading}
+                onSelectMachine={(machineId) => {
+                  navigate(`/machines/${machineId}`);
+                }}
+              />
+            }
+          />
 
-            <Route
-              path="/alerts/history"
-              element={
-                <AlertHistoryPage
-                  alerts={alertHistory}
-                  error={alertHistoryError}
-                  loading={alertHistoryLoading}
-                  onSelectMachine={(machineId) => {
-                    navigate(`/machines/${machineId}`);
-                  }}
-                />
-              }
-            />
+          <Route
+            path="/alerts"
+            element={
+              <AlertsPage
+                alerts={alerts}
+                error={alertsError}
+                initialSeverityFilter={alertSeverityShortcut}
+                onAlertsChanged={handleAlertsChanged}
+                onSelectMachine={(machineId) => {
+                  navigate(`/machines/${machineId}`);
+                }}
+              />
+            }
+          />
 
-            <Route
-              path="/alerts"
-              element={
-                <AlertsPage
-                  alerts={alerts}
-                  error={alertsError}
-                  initialSeverityFilter={alertSeverityShortcut}
-                  onAlertsChanged={refreshAlertData}
-                  onSelectMachine={(machineId) => {
-                    navigate(`/machines/${machineId}`);
-                  }}
-                />
-              }
-            />
-
-            <Route
-              path="/alert-thresholds"
-              element={
-                <AlertThresholdsPage
-                  thresholds={alertThresholds}
-                  error={alertThresholdsError}
-                  loading={alertThresholdsLoading}
-                  onUpdateThreshold={handleUpdateAlertThreshold}
-                />
-              }
-            />
-          </Routes>
+          <Route
+            path="/alert-thresholds"
+            element={
+              <AlertThresholdsPage
+                thresholds={alertThresholds}
+                error={alertThresholdsError}
+                loading={alertThresholdsLoading}
+                onUpdateThreshold={handleUpdateAlertThreshold}
+              />
+            }
+          />
+        </Routes>
       </main>
     </div>
   );
 }
-
 
 export default App;
