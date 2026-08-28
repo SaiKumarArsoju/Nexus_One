@@ -3,6 +3,7 @@ from app.repositories.alert_threshold import AlertThresholdRepository
 from app.repositories.dashboard import DashboardRepository
 from app.repositories.machine import MachineRepository
 from app.repositories.machine_health import MachineHealthRepository
+from app.repositories.sensor import SensorRepository
 from app.repositories.telemetry import TelemetryRepository
 
 __all__ = [
@@ -12,4 +13,5 @@ __all__ = [
     "MachineRepository",
     "AlertRepository",
     "AlertThresholdRepository",
+    "SensorRepository",
 ]

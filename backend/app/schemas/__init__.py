@@ -11,6 +11,7 @@ from app.schemas.machine import (
     MachineTrendsResponse,
     TelemetryTrendPoint,
 )
+from app.schemas.sensor import SensorDiscoveryResponse
 from app.schemas.telemetry import (
     TelemetryIngestedReadingResponse,
     TelemetryReadingCreate,
@@ -30,4 +31,5 @@ __all__ = [
     "AlertResponse",
     "AlertThresholdResponse",
     "AlertThresholdUpdate",
+    "SensorDiscoveryResponse",
 ]

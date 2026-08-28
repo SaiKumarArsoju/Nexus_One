@@ -10,6 +10,7 @@ from app.api.v1.alerts import router as alerts_router
 from app.api.v1.dashboard import router as dashboard_router
 from app.api.v1.health import router as health_router
 from app.api.v1.machines import router as machines_router
+from app.api.v1.sensors import router as sensors_router
 from app.api.v1.telemetry import router as telemetry_router
 from app.core.config import settings
 from app.database.session import get_db
@@ -26,6 +27,7 @@ app.include_router(dashboard_router)
 app.include_router(machines_router)
 app.include_router(alerts_router)
 app.include_router(alert_thresholds_router)
+app.include_router(sensors_router)
 
 app.add_middleware(
     CORSMiddleware,
