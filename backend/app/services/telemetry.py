@@ -1,15 +1,46 @@
+from datetime import datetime
 from uuid import UUID
 
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
 from app.repositories import TelemetryRepository
-from app.schemas import TelemetryReadingResponse
+from app.schemas import (
+    TelemetryIngestedReadingResponse,
+    TelemetryReadingResponse,
+)
 
 
 class TelemetryService:
     def __init__(self, db: Session) -> None:
         self.repository = TelemetryRepository(db)
+
+    def ingest_reading(
+        self,
+        sensor_id: UUID,
+        value: float,
+        recorded_at: datetime,
+    ) -> TelemetryIngestedReadingResponse:
+        sensor = self.repository.get_sensor(sensor_id)
+
+        if sensor is None:
+            raise HTTPException(
+                status_code=404,
+                detail="Sensor not found",
+            )
+
+        reading = self.repository.create_reading(
+            sensor_id=sensor_id,
+            value=value,
+            recorded_at=recorded_at,
+        )
+
+        return TelemetryIngestedReadingResponse(
+            id=reading.id,
+            sensor_id=reading.sensor_id,
+            value=reading.value,
+            recorded_at=reading.recorded_at,
+        )
 
     def get_machine_telemetry(
         self,

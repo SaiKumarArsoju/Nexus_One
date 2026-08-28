@@ -11,11 +11,17 @@ from app.schemas.machine import (
     MachineTrendsResponse,
     TelemetryTrendPoint,
 )
-from app.schemas.telemetry import TelemetryReadingResponse
+from app.schemas.telemetry import (
+    TelemetryIngestedReadingResponse,
+    TelemetryReadingCreate,
+    TelemetryReadingResponse,
+)
 
 __all__ = [
     "MachineHealthResponse",
     "TelemetryReadingResponse",
+    "TelemetryReadingCreate",
+    "TelemetryIngestedReadingResponse",
     "DashboardSummaryResponse",
     "MachineFleetItemResponse",
     "MachineDetailResponse",
