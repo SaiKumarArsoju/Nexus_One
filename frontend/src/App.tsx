@@ -341,6 +341,42 @@ function App() {
     matchPath("/machines/:machineId", pathname)?.params
       .machineId ?? null;
 
+  const reconcileCurrentRoute = useCallback(() => {
+    if (pathname === "/") {
+      scheduleRealtimeRefresh("dashboard", refreshDashboardNow);
+    } else if (pathname === "/machines") {
+      scheduleRealtimeRefresh("machines", refreshMachinesNow);
+    } else if (
+      routeMachineId !== null &&
+      selectedMachineId === routeMachineId
+    ) {
+      scheduleRealtimeRefresh(
+        `machine:${routeMachineId}`,
+        refreshMachineDataNow,
+      );
+    } else if (pathname === "/alerts") {
+      scheduleRealtimeRefresh(
+        "active-alerts",
+        refreshActiveAlertsNow,
+      );
+    } else if (pathname === "/alerts/history") {
+      scheduleRealtimeRefresh(
+        "alert-history",
+        refreshAlertHistoryNow,
+      );
+    }
+  }, [
+    pathname,
+    refreshActiveAlertsNow,
+    refreshAlertHistoryNow,
+    refreshDashboardNow,
+    refreshMachineDataNow,
+    refreshMachinesNow,
+    routeMachineId,
+    scheduleRealtimeRefresh,
+    selectedMachineId,
+  ]);
+
   const handleTelemetryUpdated = useCallback(
     (data: TelemetryUpdatedEventData) => {
       if (pathname === "/") {
@@ -416,6 +452,7 @@ function App() {
   );
 
   const realtimeConnectionState = useRealtimeEvents({
+    onReconnect: reconcileCurrentRoute,
     onTelemetryUpdated: handleTelemetryUpdated,
     onAlertCreated: handleAlertRealtimeEvent,
     onAlertUpdated: handleAlertRealtimeEvent,

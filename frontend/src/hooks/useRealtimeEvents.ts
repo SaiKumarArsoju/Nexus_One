@@ -15,6 +15,7 @@ export type RealtimeConnectionState =
   | "reconnecting";
 
 type RealtimeEventHandlers = {
+  onReconnect: () => void;
   onTelemetryUpdated: (data: TelemetryUpdatedEventData) => void;
   onAlertCreated: (data: AlertChangedEventData) => void;
   onAlertUpdated: (data: AlertChangedEventData) => void;
@@ -115,6 +116,8 @@ export function useRealtimeEvents(
   handlers: RealtimeEventHandlers,
 ): RealtimeConnectionState {
   const handlersRef = useRef(handlers);
+  const hasConnectedOnceRef = useRef(false);
+  const wasDisconnectedRef = useRef(false);
   const [connectionState, setConnectionState] =
     useState<RealtimeConnectionState>("connecting");
 
@@ -130,10 +133,24 @@ export function useRealtimeEvents(
     setConnectionState("connecting");
 
     const handleOpen = () => {
+      const shouldReconcile =
+        hasConnectedOnceRef.current &&
+        wasDisconnectedRef.current;
+
+      hasConnectedOnceRef.current = true;
+      wasDisconnectedRef.current = false;
       setConnectionState("connected");
+
+      if (shouldReconcile) {
+        handlersRef.current.onReconnect();
+      }
     };
 
     const handleError = () => {
+      if (hasConnectedOnceRef.current) {
+        wasDisconnectedRef.current = true;
+      }
+
       setConnectionState("reconnecting");
     };
 
