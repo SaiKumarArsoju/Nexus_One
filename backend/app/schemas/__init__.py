@@ -14,6 +14,8 @@ from app.schemas.machine import (
 )
 from app.schemas.sensor import SensorDiscoveryResponse
 from app.schemas.telemetry import (
+    TelemetryAggregateBucketResponse,
+    TelemetryAggregationBucket,
     TelemetryIngestedReadingResponse,
     TelemetryReadingCreate,
     TelemetryReadingResponse,
@@ -24,6 +26,8 @@ __all__ = [
     "TelemetryReadingResponse",
     "TelemetryReadingCreate",
     "TelemetryIngestedReadingResponse",
+    "TelemetryAggregationBucket",
+    "TelemetryAggregateBucketResponse",
     "DashboardSummaryResponse",
     "MachineFleetItemResponse",
     "MachineDetailResponse",

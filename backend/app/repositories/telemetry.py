@@ -1,10 +1,20 @@
-from datetime import datetime
+from dataclasses import dataclass
+from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.models import Machine, Sensor, SensorReading
+
+
+@dataclass(frozen=True)
+class TelemetryAggregateBucket:
+    bucket_start: datetime
+    average: float
+    minimum: float
+    maximum: float
+    count: int
 
 
 class TelemetryRepository:
@@ -58,6 +68,48 @@ class TelemetryRepository:
         ).all()
 
         return list(reversed(newest_readings))
+
+    def aggregate_readings(
+        self,
+        *,
+        sensor_id: UUID,
+        start: datetime,
+        end: datetime,
+        bucket_duration: timedelta,
+    ) -> list[TelemetryAggregateBucket]:
+        bucket_start = func.date_bin(
+            bucket_duration,
+            SensorReading.recorded_at,
+            datetime(1970, 1, 1, tzinfo=UTC),
+        ).label("bucket_start")
+
+        statement = (
+            select(
+                bucket_start,
+                func.avg(SensorReading.value).label("average"),
+                func.min(SensorReading.value).label("minimum"),
+                func.max(SensorReading.value).label("maximum"),
+                func.count().label("count"),
+            )
+            .where(
+                SensorReading.sensor_id == sensor_id,
+                SensorReading.recorded_at >= start,
+                SensorReading.recorded_at < end,
+            )
+            .group_by(bucket_start)
+            .order_by(bucket_start.asc())
+        )
+
+        return [
+            TelemetryAggregateBucket(
+                bucket_start=row.bucket_start,
+                average=float(row.average),
+                minimum=float(row.minimum),
+                maximum=float(row.maximum),
+                count=row.count,
+            )
+            for row in self.db.execute(statement)
+        ]
 
     def get_machine_telemetry(self, machine_id: UUID):
         statement = (

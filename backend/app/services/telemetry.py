@@ -1,4 +1,4 @@
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
 from fastapi import HTTPException
@@ -11,6 +11,8 @@ from app.realtime import (
 )
 from app.repositories import TelemetryRepository
 from app.schemas import (
+    TelemetryAggregateBucketResponse,
+    TelemetryAggregationBucket,
     TelemetryIngestedReadingResponse,
     TelemetryReadingResponse,
 )
@@ -18,6 +20,14 @@ from app.services.alert import AlertService
 
 DEFAULT_TELEMETRY_HISTORY_LIMIT = 500
 MAX_TELEMETRY_HISTORY_LIMIT = 5_000
+MAX_TELEMETRY_AGGREGATION_RANGE = timedelta(days=31)
+
+TELEMETRY_AGGREGATION_BUCKET_DURATIONS = {
+    TelemetryAggregationBucket.ONE_MINUTE: timedelta(minutes=1),
+    TelemetryAggregationBucket.FIVE_MINUTES: timedelta(minutes=5),
+    TelemetryAggregationBucket.FIFTEEN_MINUTES: timedelta(minutes=15),
+    TelemetryAggregationBucket.ONE_HOUR: timedelta(hours=1),
+}
 
 
 class TelemetryService:
@@ -149,6 +159,47 @@ class TelemetryService:
                 recorded_at=reading.recorded_at,
             )
             for reading in readings
+        ]
+
+    def get_aggregated_readings(
+        self,
+        *,
+        sensor_id: UUID,
+        start: datetime,
+        end: datetime,
+        bucket: TelemetryAggregationBucket,
+    ) -> list[TelemetryAggregateBucketResponse]:
+        if self.repository.get_sensor(sensor_id) is None:
+            raise LookupError("Sensor not found")
+
+        start_utc = self._to_utc(start, parameter_name="start")
+        end_utc = self._to_utc(end, parameter_name="end")
+
+        if start_utc is None or end_utc is None:
+            raise ValueError("start and end are required")
+
+        if start_utc >= end_utc:
+            raise ValueError("start must be earlier than end")
+
+        if end_utc - start_utc > MAX_TELEMETRY_AGGREGATION_RANGE:
+            raise ValueError("aggregation range must not exceed 31 days")
+
+        rows = self.repository.aggregate_readings(
+            sensor_id=sensor_id,
+            start=start_utc,
+            end=end_utc,
+            bucket_duration=TELEMETRY_AGGREGATION_BUCKET_DURATIONS[bucket],
+        )
+
+        return [
+            TelemetryAggregateBucketResponse(
+                bucket_start=row.bucket_start,
+                average=row.average,
+                minimum=row.minimum,
+                maximum=row.maximum,
+                count=row.count,
+            )
+            for row in rows
         ]
 
     @staticmethod

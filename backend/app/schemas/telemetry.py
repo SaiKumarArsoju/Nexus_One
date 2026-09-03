@@ -1,4 +1,5 @@
 from datetime import datetime
+from enum import StrEnum
 from uuid import UUID
 
 from pydantic import AwareDatetime, BaseModel, Field
@@ -24,3 +25,18 @@ class TelemetryReadingResponse(BaseModel):
     unit: str
     value: float
     recorded_at: datetime
+
+
+class TelemetryAggregationBucket(StrEnum):
+    ONE_MINUTE = "1m"
+    FIVE_MINUTES = "5m"
+    FIFTEEN_MINUTES = "15m"
+    ONE_HOUR = "1h"
+
+
+class TelemetryAggregateBucketResponse(BaseModel):
+    bucket_start: datetime
+    average: float
+    minimum: float
+    maximum: float
+    count: int

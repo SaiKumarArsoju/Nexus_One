@@ -10,6 +10,8 @@ from app.database.session import get_db
 from app.domain.alert_rules import AlertThresholdConfigurationError
 from app.realtime import publish_committed_events
 from app.schemas import (
+    TelemetryAggregateBucketResponse,
+    TelemetryAggregationBucket,
     TelemetryIngestedReadingResponse,
     TelemetryReadingCreate,
     TelemetryReadingResponse,
@@ -21,6 +23,48 @@ from app.services.telemetry import (
 )
 
 router = APIRouter(prefix="/api/v1", tags=["Telemetry"])
+
+
+@router.get(
+    "/telemetry/aggregate",
+    response_model=list[TelemetryAggregateBucketResponse],
+)
+def get_aggregated_telemetry_readings(
+    sensor_id: Annotated[
+        UUID,
+        Query(description="Sensor whose readings should be aggregated"),
+    ],
+    start: Annotated[
+        AwareDatetime,
+        Query(description="Inclusive timezone-aware start timestamp"),
+    ],
+    end: Annotated[
+        AwareDatetime,
+        Query(description="Exclusive timezone-aware end timestamp"),
+    ],
+    bucket: Annotated[
+        TelemetryAggregationBucket,
+        Query(description="Absolute UTC time-bucket size"),
+    ],
+    db: Annotated[Session, Depends(get_db)],
+) -> list[TelemetryAggregateBucketResponse]:
+    try:
+        return TelemetryService(db).get_aggregated_readings(
+            sensor_id=sensor_id,
+            start=start,
+            end=end,
+            bucket=bucket,
+        )
+    except LookupError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(exc),
+        ) from exc
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail=str(exc),
+        ) from exc
 
 
 @router.get(

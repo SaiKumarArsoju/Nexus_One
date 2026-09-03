@@ -52,6 +52,16 @@ The API selects the newest requested readings within the range, then
 returns that bounded set oldest to newest. The default limit is 500 and
 the maximum is 5000.
 
+Aggregate one sensor's readings into PostgreSQL time buckets:
+
+~~~text
+GET /api/v1/telemetry/aggregate?sensor_id=<uuid>&start=<ISO8601>&end=<ISO8601>&bucket=5m
+~~~
+
+`start` and `end` are required timezone-aware bounds with a maximum range of 31 days.
+The query uses `[start, end)` semantics and supports `1m`, `5m`, `15m`, and `1h` buckets
+aligned to absolute UTC clock boundaries. Only buckets containing readings are returned.
+
 ## Development SSE infrastructure
 
 The backend exposes a process-local Server-Sent Events stream for development:
