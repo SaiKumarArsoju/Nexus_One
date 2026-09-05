@@ -654,6 +654,103 @@ h1 {
   flex: none;
 }
 
+.historical-threshold-panel {
+  margin-bottom: 16px;
+  padding: 16px;
+  border: 1px solid rgb(167 139 250 / 28%);
+  border-radius: 14px;
+  background: rgb(139 92 246 / 6%);
+}
+
+.historical-threshold-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.historical-threshold-heading .eyebrow {
+  margin-bottom: 3px;
+  color: #a78bfa;
+}
+
+.historical-threshold-heading h3 {
+  margin: 0;
+  font-size: 15px;
+}
+
+.historical-threshold-value {
+  color: #ddd6fe;
+  font-size: 18px;
+  white-space: nowrap;
+}
+
+.historical-threshold-message {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin: 12px 0 0;
+  color: #94a3b8;
+  font-size: 13px;
+}
+
+.historical-threshold-message.error {
+  color: #fca5a5;
+}
+
+.historical-threshold-message .view-all-button {
+  flex: none;
+}
+
+.historical-threshold-metrics {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 10px;
+  margin: 16px 0 0;
+}
+
+.historical-threshold-metrics div {
+  min-width: 0;
+  padding: 11px 12px;
+  border: 1px solid rgb(167 139 250 / 18%);
+  border-radius: 10px;
+  background: rgb(15 23 42 / 72%);
+}
+
+.historical-threshold-metrics dt {
+  margin-bottom: 6px;
+  color: #64748b;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.historical-threshold-metrics dd {
+  margin: 0;
+  color: #e2e8f0;
+  font-size: 14px;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.historical-threshold-metrics dd small {
+  display: block;
+  margin-top: 4px;
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.historical-threshold-metrics .threshold-exceeded {
+  color: #fbbf24;
+}
+
+.historical-threshold-metrics .threshold-within {
+  color: #86efac;
+}
+
 .historical-state {
   display: flex;
   min-height: 280px;
@@ -801,12 +898,18 @@ h1 {
 
 @media (max-width: 700px) {
   .historical-window,
-  .historical-notice {
+  .historical-notice,
+  .historical-threshold-heading,
+  .historical-threshold-message {
     align-items: stretch;
     flex-direction: column;
   }
 
   .historical-notice .view-all-button {
+    width: 100%;
+  }
+
+  .historical-threshold-message .view-all-button {
     width: 100%;
   }
 

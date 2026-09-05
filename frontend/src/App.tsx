@@ -296,19 +296,22 @@ function App() {
     setMachineTrendsError("");
   }, [selectedMachineId]);
 
-  useEffect(() => {
+  const refreshAlertThresholds = useCallback(async () => {
     setAlertThresholdsLoading(true);
     setAlertThresholdsError("");
 
-    getAlertThresholds()
-      .then(setAlertThresholds)
-      .catch((requestError: Error) => {
-        setAlertThresholdsError(requestError.message);
-      })
-      .finally(() => {
-        setAlertThresholdsLoading(false);
-      });
+    try {
+      setAlertThresholds(await getAlertThresholds());
+    } catch (requestError) {
+      setAlertThresholdsError(errorMessage(requestError));
+    } finally {
+      setAlertThresholdsLoading(false);
+    }
   }, []);
+
+  useEffect(() => {
+    void refreshAlertThresholds();
+  }, [refreshAlertThresholds]);
 
   const refreshDashboardNow = usePolling(refreshDashboard, {
     enabled: pathname === "/",
@@ -605,6 +608,10 @@ function App() {
                 error={machineDetailError}
                 trends={machineTrends}
                 trendsError={machineTrendsError}
+                thresholds={alertThresholds}
+                thresholdError={alertThresholdsError}
+                thresholdLoading={alertThresholdsLoading}
+                onRetryThresholds={refreshAlertThresholds}
                 setSelectedMachineId={setSelectedMachineId}
               />
             }

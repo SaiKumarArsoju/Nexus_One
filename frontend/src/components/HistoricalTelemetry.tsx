@@ -4,24 +4,27 @@ import {
   Legend,
   Line,
   LineChart,
+  ReferenceLine,
   ResponsiveContainer,
   Tooltip,
   XAxis,
   YAxis,
 } from "recharts";
 
-import {
-  getSensors,
-  getTelemetryAggregates,
-} from "../api/client";
+import { getSensors, getTelemetryAggregates } from "../api/client";
 import {
   DEFAULT_TELEMETRY_HISTORY_RANGE_KEY,
   getTelemetryHistoryRange,
   TELEMETRY_HISTORY_RANGES,
   TELEMETRY_TREND_STABILITY_PERCENT,
 } from "../config/telemetryHistory";
+import {
+  calculateTelemetryYAxisDomain,
+  summarizeThresholdAnalytics,
+} from "../utils/telemetryAnalytics";
 
 import type {
+  AlertThreshold,
   SensorDiscovery,
   TelemetryAggregateBucket,
 } from "../types/api";
@@ -30,6 +33,10 @@ import type { TooltipContentProps } from "recharts";
 
 type HistoricalTelemetryProps = {
   machineId: string;
+  thresholds: AlertThreshold[];
+  thresholdLoading: boolean;
+  thresholdError: string;
+  onRetryThresholds: () => Promise<void>;
 };
 
 type LoadedRequestWindow = {
@@ -161,24 +168,6 @@ function summarizeWindow(
   };
 }
 
-function calculateYAxisDomain(
-  summary: WindowSummary | null,
-): [number | "auto", number | "auto"] {
-  if (!summary) {
-    return ["auto", "auto"];
-  }
-
-  const spread = summary.maximum - summary.minimum;
-  const magnitude = Math.max(
-    Math.abs(summary.minimum),
-    Math.abs(summary.maximum),
-    1,
-  );
-  const padding = Math.max(spread * 0.1, magnitude * 0.01);
-
-  return [summary.minimum - padding, summary.maximum + padding];
-}
-
 function HistoricalTooltip({
   active,
   payload,
@@ -201,7 +190,13 @@ function HistoricalTooltip({
   );
 }
 
-function HistoricalTelemetry({ machineId }: HistoricalTelemetryProps) {
+function HistoricalTelemetry({
+  machineId,
+  thresholds,
+  thresholdLoading,
+  thresholdError,
+  onRetryThresholds,
+}: HistoricalTelemetryProps) {
   const [sensors, setSensors] = useState<SensorDiscovery[]>([]);
   const [selectedSensorId, setSelectedSensorId] = useState("");
   const [rangeKey, setRangeKey] =
@@ -222,6 +217,11 @@ function HistoricalTelemetry({ machineId }: HistoricalTelemetryProps) {
   const selectedSensor = sensors.find(
     (sensor) => sensor.id === selectedSensorId,
   );
+  const matchingThreshold = thresholds.find(
+    (threshold) => threshold.sensor_type === selectedSensor?.sensor_type,
+  );
+  const availableThreshold =
+    !thresholdLoading && !thresholdError ? matchingThreshold : undefined;
   const currentHistory =
     loadedHistory?.sensorId === selectedSensorId &&
     loadedHistory.rangeKey === rangeKey
@@ -238,9 +238,23 @@ function HistoricalTelemetry({ machineId }: HistoricalTelemetryProps) {
     [currentHistory],
   );
   const windowSummary = useMemo(() => summarizeWindow(chartData), [chartData]);
+  const thresholdAnalytics = useMemo(
+    () =>
+      availableThreshold
+        ? summarizeThresholdAnalytics(
+            currentHistory?.buckets ?? [],
+            availableThreshold.threshold_value,
+          )
+        : null,
+    [availableThreshold, currentHistory],
+  );
   const yAxisDomain = useMemo(
-    () => calculateYAxisDomain(windowSummary),
-    [windowSummary],
+    () =>
+      calculateTelemetryYAxisDomain(
+        currentHistory?.buckets ?? [],
+        availableThreshold?.threshold_value,
+      ),
+    [availableThreshold, currentHistory],
   );
 
   useEffect(() => {
@@ -476,6 +490,137 @@ function HistoricalTelemetry({ machineId }: HistoricalTelemetryProps) {
         </div>
       )}
 
+      {!sensorError && selectedSensor && (
+        <aside
+          className="historical-threshold-panel"
+          aria-label="Operational threshold context"
+        >
+          <div className="historical-threshold-heading">
+            <div>
+              <p className="eyebrow">Operational context</p>
+              <h3>Configured alert threshold</h3>
+            </div>
+            {availableThreshold && (
+              <strong className="historical-threshold-value">
+                {formatValue(
+                  availableThreshold.threshold_value,
+                  availableThreshold.unit,
+                )}
+              </strong>
+            )}
+          </div>
+
+          {thresholdLoading && (
+            <p className="historical-threshold-message" role="status">
+              Loading configured threshold...
+            </p>
+          )}
+
+          {!thresholdLoading && thresholdError && (
+            <>
+              <dl className="historical-threshold-metrics">
+                <div>
+                  <dt>Threshold status</dt>
+                  <dd>Unavailable</dd>
+                </div>
+              </dl>
+              <div className="historical-threshold-message error" role="alert">
+                <span>
+                  Unable to load the configured threshold. Historical telemetry
+                  remains available. {thresholdError}
+                </span>
+                <button
+                  className="view-all-button"
+                  type="button"
+                  onClick={() => void onRetryThresholds()}
+                >
+                  Try again
+                </button>
+              </div>
+            </>
+          )}
+
+          {!thresholdLoading && !thresholdError && !matchingThreshold && (
+            <>
+              <dl className="historical-threshold-metrics">
+                <div>
+                  <dt>Threshold status</dt>
+                  <dd>Unavailable</dd>
+                </div>
+              </dl>
+              <p className="historical-threshold-message">
+                No persisted threshold is configured for{" "}
+                {selectedSensor.sensor_type}.
+              </p>
+            </>
+          )}
+
+          {availableThreshold && thresholdAnalytics && (
+            <dl
+              className="historical-threshold-metrics"
+              aria-label="Threshold analysis for populated buckets"
+            >
+              <div>
+                <dt>Threshold status</dt>
+                <dd
+                  className={
+                    thresholdAnalytics.exceedingBucketCount > 0
+                      ? "threshold-exceeded"
+                      : "threshold-within"
+                  }
+                >
+                  {thresholdAnalytics.exceedingBucketCount > 0
+                    ? "Threshold exceeded"
+                    : "Within configured threshold"}
+                </dd>
+              </div>
+              <div>
+                <dt>Buckets exceeding</dt>
+                <dd>
+                  {thresholdAnalytics.exceedingBucketCount.toLocaleString()} of{" "}
+                  {chartData.length.toLocaleString()}
+                </dd>
+              </div>
+              <div>
+                <dt>Share of populated buckets</dt>
+                <dd>
+                  {TREND_FORMATTER.format(
+                    thresholdAnalytics.exceedingBucketPercentage,
+                  )}
+                  %
+                </dd>
+              </div>
+              <div>
+                <dt>Readings in exceeding buckets</dt>
+                <dd>
+                  {thresholdAnalytics.readingsInExceedingBuckets.toLocaleString()}
+                </dd>
+              </div>
+              <div>
+                <dt>Peak bucket maximum</dt>
+                <dd>
+                  {formatValue(
+                    thresholdAnalytics.peakMaximum,
+                    availableThreshold.unit,
+                  )}
+                  <small>
+                    {formatLocalTimestamp(
+                      Date.parse(thresholdAnalytics.peakBucketStart),
+                    )}
+                  </small>
+                </dd>
+              </div>
+            </dl>
+          )}
+
+          {availableThreshold && currentHistory && chartData.length === 0 && (
+            <p className="historical-threshold-message">
+              No populated buckets are available for threshold analysis.
+            </p>
+          )}
+        </aside>
+      )}
+
       {!sensorError &&
         selectedSensor &&
         currentHistory &&
@@ -600,6 +745,23 @@ function HistoricalTelemetry({ machineId }: HistoricalTelemetryProps) {
                     )}
                   />
                   <Legend />
+                  {availableThreshold && (
+                    <ReferenceLine
+                      y={availableThreshold.threshold_value}
+                      stroke="#a78bfa"
+                      strokeWidth={1.5}
+                      strokeDasharray="6 4"
+                      label={{
+                        value: `Threshold · ${formatValue(
+                          availableThreshold.threshold_value,
+                          availableThreshold.unit,
+                        )}`,
+                        position: "insideTopRight",
+                        fill: "#c4b5fd",
+                        fontSize: 12,
+                      }}
+                    />
+                  )}
                   <Line
                     type="linear"
                     dataKey="maximum"

@@ -6,6 +6,7 @@ import HistoricalTelemetry from "../components/HistoricalTelemetry";
 import TrendChart from "../components/TrendChart";
 
 import type {
+  AlertThreshold,
   MachineDetail,
   MachineTrends,
 } from "../types/api";
@@ -15,6 +16,10 @@ type MachineDetailRouteProps = {
   error: string;
   trends: MachineTrends | null;
   trendsError: string;
+  thresholds: AlertThreshold[];
+  thresholdError: string;
+  thresholdLoading: boolean;
+  onRetryThresholds: () => Promise<void>;
   setSelectedMachineId: (machineId: string | null) => void;
 };
 
@@ -23,6 +28,10 @@ function MachineDetailRoute({
   error,
   trends,
   trendsError,
+  thresholds,
+  thresholdError,
+  thresholdLoading,
+  onRetryThresholds,
   setSelectedMachineId,
 }: MachineDetailRouteProps) {
   const { machineId } = useParams();
@@ -42,6 +51,10 @@ function MachineDetailRoute({
       error={error}
       trends={trends}
       trendsError={trendsError}
+      thresholds={thresholds}
+      thresholdError={thresholdError}
+      thresholdLoading={thresholdLoading}
+      onRetryThresholds={onRetryThresholds}
       onBack={() => navigate("/machines")}
     />
   );
@@ -52,6 +65,10 @@ type MachineDetailPageProps = {
   error: string;
   trends: MachineTrends | null;
   trendsError: string;
+  thresholds: AlertThreshold[];
+  thresholdError: string;
+  thresholdLoading: boolean;
+  onRetryThresholds: () => Promise<void>;
   onBack: () => void;
 };
 
@@ -60,6 +77,10 @@ function MachineDetailPage({
   error,
   trends,
   trendsError,
+  thresholds,
+  thresholdError,
+  thresholdLoading,
+  onRetryThresholds,
   onBack,
 }: MachineDetailPageProps) {
   if (error) {
@@ -197,6 +218,10 @@ function MachineDetailPage({
       <HistoricalTelemetry
         key={machine.id}
         machineId={machine.id}
+        thresholds={thresholds}
+        thresholdError={thresholdError}
+        thresholdLoading={thresholdLoading}
+        onRetryThresholds={onRetryThresholds}
       />
     </>
   );
