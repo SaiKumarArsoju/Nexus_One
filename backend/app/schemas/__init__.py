@@ -12,6 +12,10 @@ from app.schemas.machine import (
     MachineTrendsResponse,
     TelemetryTrendPoint,
 )
+from app.schemas.predictive import (
+    MachinePredictiveFeaturesResponse,
+    SensorPredictiveFeatureResponse,
+)
 from app.schemas.sensor import SensorDiscoveryResponse
 from app.schemas.telemetry import (
     TelemetryAggregateBucketResponse,
@@ -38,4 +42,6 @@ __all__ = [
     "AlertThresholdUpdate",
     "SensorDiscoveryResponse",
     "TestEventPublishRequest",
+    "MachinePredictiveFeaturesResponse",
+    "SensorPredictiveFeatureResponse",
 ]

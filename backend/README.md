@@ -68,6 +68,25 @@ strictly greater than the threshold. Counts therefore describe buckets, and the 
 total describes readings represented by exceeding buckets; neither metric claims exact time or
 exact individual readings above the threshold.
 
+## Predictive-maintenance feature foundation
+
+The backend exposes an on-demand, versioned descriptive feature vector for a machine:
+
+```text
+GET /api/v1/machines/<machine_id>/predictive-features?window=24h&end=<ISO8601>
+```
+
+Supported lookback windows are `1h`, `6h`, `24h`, and `7d`; the default is `24h`. The optional
+timezone-aware `end` makes extraction reproducible, and every sensor uses the same `[start, end)`
+UTC window. Version `v1` includes reading count, mean, minimum, maximum, population standard
+deviation (`STDDEV_POP`), deterministic first/last values, change metrics, persisted-threshold
+ratios and strict reading-level exceedance metrics, time span, and `NO_DATA`/`SPARSE`/`SUFFICIENT`
+coverage status. Features are calculated on demand and are not stored in a feature table.
+
+These descriptive features are preparation for later evaluation. They are not a trained-model
+prediction and do not represent failure probability, remaining useful life, or a predicted
+breakdown date.
+
 ## Development SSE infrastructure
 
 The backend exposes a process-local Server-Sent Events stream for development:
