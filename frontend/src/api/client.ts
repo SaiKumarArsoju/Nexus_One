@@ -5,7 +5,10 @@ import type {
   MachineDetail,
   MachineFleetItem,
   MachineTrends,
+  SensorDiscovery,
   SensorType,
+  TelemetryAggregateBucket,
+  TelemetryAggregationBucket,
 } from "../types/api";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
@@ -50,6 +53,34 @@ export function getMachineTrends(
   machineId: string,
 ): Promise<MachineTrends> {
   return request<MachineTrends>(`/machines/${machineId}/trends`);
+}
+
+export function getSensors(signal?: AbortSignal): Promise<SensorDiscovery[]> {
+  return request<SensorDiscovery[]>("/sensors", { signal });
+}
+
+type TelemetryAggregateQuery = {
+  sensorId: string;
+  start: string;
+  end: string;
+  bucket: TelemetryAggregationBucket;
+};
+
+export function getTelemetryAggregates(
+  { sensorId, start, end, bucket }: TelemetryAggregateQuery,
+  signal?: AbortSignal,
+): Promise<TelemetryAggregateBucket[]> {
+  const query = new URLSearchParams({
+    sensor_id: sensorId,
+    start,
+    end,
+    bucket,
+  });
+
+  return request<TelemetryAggregateBucket[]>(
+    `/telemetry/aggregate?${query.toString()}`,
+    { signal },
+  );
 }
 
 export function getAlerts(): Promise<AlertItem[]> {

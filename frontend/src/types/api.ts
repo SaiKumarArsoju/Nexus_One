@@ -52,6 +52,24 @@ export type MachineTrends = {
   energy: TelemetryTrendPoint[];
 };
 
+export type SensorDiscovery = {
+  id: string;
+  name: string;
+  sensor_type: SensorType;
+  unit: string;
+  machine_id: string;
+};
+
+export type TelemetryAggregationBucket = "1m" | "5m" | "15m" | "1h";
+
+export type TelemetryAggregateBucket = {
+  bucket_start: string;
+  average: number;
+  minimum: number;
+  maximum: number;
+  count: number;
+};
+
 export type AlertSeverity = "WARNING" | "CRITICAL";
 
 export type AlertStatus = "ACTIVE" | "ACKNOWLEDGED" | "RESOLVED";

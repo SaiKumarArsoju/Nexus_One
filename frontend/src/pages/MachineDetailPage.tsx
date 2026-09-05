@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
 import MetricCard from "../components/MetricCard";
+import HistoricalTelemetry from "../components/HistoricalTelemetry";
 import TrendChart from "../components/TrendChart";
 
 import type {
@@ -192,6 +193,11 @@ function MachineDetailPage({
           </div>
         )}
       </section>
+
+      <HistoricalTelemetry
+        key={machine.id}
+        machineId={machine.id}
+      />
     </>
   );
 }
