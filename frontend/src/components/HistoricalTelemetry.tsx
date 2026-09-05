@@ -655,7 +655,10 @@ function HistoricalTelemetry({
         selectedSensor &&
         currentHistory &&
         chartData.length > 0 && (
-          <article className="historical-chart-card">
+          <article
+            className="historical-chart-card"
+            aria-describedby="historical-chart-context"
+          >
             <div className="historical-chart-summary">
               <div>
                 <strong>{selectedSensor.name}</strong>
@@ -666,6 +669,21 @@ function HistoricalTelemetry({
               </div>
               <span>{chartData.length.toLocaleString()} populated buckets</span>
             </div>
+
+            <p
+              id="historical-chart-context"
+              className="historical-chart-context"
+            >
+              Chart showing average, minimum, and maximum values for each
+              populated bucket
+              {availableThreshold
+                ? `, with the configured threshold at ${formatValue(
+                    availableThreshold.threshold_value,
+                    availableThreshold.unit,
+                  )}`
+                : ""}
+              .
+            </p>
 
             {windowSummary && (
               <dl className="historical-metrics" aria-label="Window summary">

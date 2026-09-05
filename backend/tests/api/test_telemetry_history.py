@@ -209,6 +209,73 @@ def test_start_and_end_filter_range(client, db, history_sensor):
     ]
 
 
+def test_equal_start_and_end_include_reading_at_exact_instant(
+    client,
+    db,
+    history_sensor,
+):
+    recorded_at = datetime(2026, 8, 28, 12, tzinfo=UTC)
+    _add_reading(
+        db,
+        history_sensor,
+        value=72.5,
+        recorded_at=recorded_at,
+    )
+    db.flush()
+
+    response = _query_history(
+        client,
+        history_sensor,
+        start=recorded_at.isoformat(),
+        end=recorded_at.isoformat(),
+    )
+
+    assert response.status_code == 200
+    assert _response_datetimes(response) == [recorded_at]
+
+
+@pytest.mark.parametrize(
+    ("start", "end"),
+    [
+        pytest.param(
+            "2026-08-28T17:29:00+05:30",
+            "2026-08-28T17:31:00+05:30",
+            id="positive-offset",
+        ),
+        pytest.param(
+            "2026-08-28T07:59:00-04:00",
+            "2026-08-28T08:01:00-04:00",
+            id="negative-offset",
+        ),
+    ],
+)
+def test_timezone_offsets_are_normalized_for_raw_history(
+    client,
+    db,
+    history_sensor,
+    start,
+    end,
+):
+    recorded_at = datetime(2026, 8, 28, 12, tzinfo=UTC)
+    _add_reading(
+        db,
+        history_sensor,
+        value=72.5,
+        recorded_at=recorded_at,
+    )
+    db.flush()
+
+    response = _query_history(
+        client,
+        history_sensor,
+        start=start,
+        end=end,
+    )
+
+    assert response.status_code == 200
+    assert _response_datetimes(response) == [recorded_at]
+
+
 def test_start_after_end_returns_422(client, history_sensor):
     response = _query_history(
         client,

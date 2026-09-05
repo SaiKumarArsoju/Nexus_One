@@ -396,10 +396,27 @@ def test_aggregation_range_limit(
         assert response.json() == {"detail": "aggregation range must not exceed 31 days"}
 
 
+@pytest.mark.parametrize(
+    ("start", "end"),
+    [
+        pytest.param(
+            "2026-08-28T17:33:00+05:30",
+            "2026-08-28T17:40:00+05:30",
+            id="positive-offset",
+        ),
+        pytest.param(
+            "2026-08-28T08:03:00-04:00",
+            "2026-08-28T08:10:00-04:00",
+            id="negative-offset",
+        ),
+    ],
+)
 def test_timezone_offsets_are_normalized_to_utc(
     client,
     db,
     aggregation_sensor,
+    start,
+    end,
 ):
     _add_reading(
         db,
@@ -412,12 +429,76 @@ def test_timezone_offsets_are_normalized_to_utc(
     response = _query_aggregate(
         client,
         aggregation_sensor,
-        start="2026-08-28T07:03:00-05:00",
-        end="2026-08-28T07:10:00-05:00",
+        start=start,
+        end=end,
     )
 
     assert response.status_code == 200
     assert response.json()[0]["bucket_start"] == "2026-08-28T12:00:00Z"
+
+
+def test_dst_adjacent_offsets_are_compared_as_absolute_instants(
+    client,
+    db,
+    aggregation_sensor,
+):
+    for recorded_at, value in [
+        (datetime(2026, 11, 1, 5, 45, tzinfo=UTC), 70.0),
+        (datetime(2026, 11, 1, 6, 15, tzinfo=UTC), 80.0),
+    ]:
+        _add_reading(
+            db,
+            aggregation_sensor,
+            value=value,
+            recorded_at=recorded_at,
+        )
+    db.flush()
+
+    response = _query_aggregate(
+        client,
+        aggregation_sensor,
+        start="2026-11-01T01:30:00-04:00",
+        end="2026-11-01T01:30:00-05:00",
+        bucket="1h",
+    )
+
+    assert response.status_code == 200
+    assert [bucket["bucket_start"] for bucket in response.json()] == [
+        "2026-11-01T05:00:00Z",
+        "2026-11-01T06:00:00Z",
+    ]
+
+
+def test_hour_buckets_align_across_utc_midnight(
+    client,
+    db,
+    aggregation_sensor,
+):
+    for recorded_at in [
+        datetime(2026, 8, 28, 23, 59, 59, tzinfo=UTC),
+        datetime(2026, 8, 29, 0, 0, tzinfo=UTC),
+    ]:
+        _add_reading(
+            db,
+            aggregation_sensor,
+            value=72.0,
+            recorded_at=recorded_at,
+        )
+    db.flush()
+
+    response = _query_aggregate(
+        client,
+        aggregation_sensor,
+        start="2026-08-28T23:59:00Z",
+        end="2026-08-29T00:01:00Z",
+        bucket="1h",
+    )
+
+    assert response.status_code == 200
+    assert [bucket["bucket_start"] for bucket in response.json()] == [
+        "2026-08-28T23:00:00Z",
+        "2026-08-29T00:00:00Z",
+    ]
 
 
 def test_multiple_readings_at_same_timestamp_aggregate_together(

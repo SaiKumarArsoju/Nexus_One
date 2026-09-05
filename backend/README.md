@@ -62,6 +62,12 @@ GET /api/v1/telemetry/aggregate?sensor_id=<uuid>&start=<ISO8601>&end=<ISO8601>&b
 The query uses `[start, end)` semantics and supports `1m`, `5m`, `15m`, and `1h` buckets
 aligned to absolute UTC clock boundaries. Only buckets containing readings are returned.
 
+The Machine Detail frontend derives descriptive threshold analytics from those populated
+aggregate buckets. A bucket exceeds its persisted sensor-type threshold only when its maximum is
+strictly greater than the threshold. Counts therefore describe buckets, and the displayed reading
+total describes readings represented by exceeding buckets; neither metric claims exact time or
+exact individual readings above the threshold.
+
 ## Development SSE infrastructure
 
 The backend exposes a process-local Server-Sent Events stream for development:

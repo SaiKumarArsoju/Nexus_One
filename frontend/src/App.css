@@ -806,6 +806,13 @@ h1 {
   font-size: 12px;
 }
 
+.historical-chart-context {
+  margin: -6px 0 16px;
+  color: #94a3b8;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
 .historical-metrics {
   display: grid;
   grid-template-columns: repeat(5, minmax(110px, 1fr));
