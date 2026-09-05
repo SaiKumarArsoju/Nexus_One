@@ -7,19 +7,66 @@ from sqlalchemy.orm import Session
 
 from app.database.session import get_db
 from app.domain.alert_rules import AlertThresholdConfigurationError
+from app.domain.health_scoring import HealthScoringDataError
 from app.domain.predictive_features import (
     PredictiveFeatureConfigurationError,
+    PredictiveFeatureDataError,
     PredictiveFeatureWindow,
 )
 from app.schemas import (
     MachineDetailResponse,
     MachineFleetItemResponse,
+    MachineHealthScoreResponse,
     MachinePredictiveFeaturesResponse,
     MachineTrendsResponse,
 )
-from app.services import MachineService, PredictiveFeatureService
+from app.services import HealthScoringService, MachineService, PredictiveFeatureService
 
 router = APIRouter(prefix="/api/v1", tags=["Machines"])
+
+
+@router.get(
+    "/machines/{machine_id}/health-score",
+    response_model=MachineHealthScoreResponse,
+)
+def get_machine_health_score(
+    machine_id: UUID,
+    db: Annotated[Session, Depends(get_db)],
+    window: Annotated[
+        PredictiveFeatureWindow,
+        Query(description="Controlled lookback window"),
+    ] = PredictiveFeatureWindow.TWENTY_FOUR_HOURS,
+    end: Annotated[
+        AwareDatetime | None,
+        Query(description="Exclusive timezone-aware scoring-window end"),
+    ] = None,
+) -> MachineHealthScoreResponse:
+    try:
+        return HealthScoringService(db).get_machine_health_score(
+            machine_id=machine_id,
+            window=window,
+            end=end,
+        )
+    except LookupError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(exc),
+        ) from exc
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail=str(exc),
+        ) from exc
+    except (
+        AlertThresholdConfigurationError,
+        PredictiveFeatureConfigurationError,
+        PredictiveFeatureDataError,
+        HealthScoringDataError,
+    ) as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(exc),
+        ) from exc
 
 
 @router.get(

@@ -5,7 +5,12 @@ from app.schemas.alert_threshold import (
 )
 from app.schemas.dashboard import DashboardSummaryResponse
 from app.schemas.event import TestEventPublishRequest
-from app.schemas.health import MachineHealthResponse
+from app.schemas.health import (
+    MachineHealthResponse,
+    MachineHealthScoreResponse,
+    SensorHealthPenaltyResponse,
+    SensorHealthScoreResponse,
+)
 from app.schemas.machine import (
     MachineDetailResponse,
     MachineFleetItemResponse,
@@ -44,4 +49,7 @@ __all__ = [
     "TestEventPublishRequest",
     "MachinePredictiveFeaturesResponse",
     "SensorPredictiveFeatureResponse",
+    "MachineHealthScoreResponse",
+    "SensorHealthPenaltyResponse",
+    "SensorHealthScoreResponse",
 ]

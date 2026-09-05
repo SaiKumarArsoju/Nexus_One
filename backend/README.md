@@ -87,6 +87,28 @@ These descriptive features are preparation for later evaluation. They are not a 
 prediction and do not represent failure probability, remaining useful life, or a predicted
 breakdown date.
 
+## Deterministic maintenance health score
+
+The backend can transform the versioned feature vector into an explainable, on-demand maintenance
+health indicator:
+
+```text
+GET /api/v1/machines/<machine_id>/health-score?window=24h&end=<ISO8601>
+```
+
+The response identifies both `feature_version` and `scoring_version`. Scores range from 0 to 100,
+where higher is healthier, and use `HEALTHY` (80–100), `WATCH` (60–<80), `ATTENTION` (0–<60), or
+`INSUFFICIENT_DATA`. Separate `NONE`, `LOW`, `MEDIUM`, and `HIGH` confidence values describe data
+coverage rather than machine health.
+
+Scoring version `v1` starts at 100 and subtracts capped, visible penalties for threshold proximity,
+mean level, exact reading-level exceedance fraction, absolute trend magnitude, and
+threshold-normalized variability. A machine score blends 70% of the equal-weight sensor average
+with 30% of the lowest sensor score. Deterministic reasons explain the material contributions.
+
+This indicator is not machine learning, failure probability, remaining useful life, or a predicted
+breakdown date. Scores are not persisted and are not recalculated through realtime events.
+
 ## Development SSE infrastructure
 
 The backend exposes a process-local Server-Sent Events stream for development:

@@ -1,6 +1,7 @@
 from app.services.alert import AlertService
 from app.services.alert_threshold import AlertThresholdService
 from app.services.dashboard import DashboardService
+from app.services.health_scoring import HealthScoringService
 from app.services.machine import MachineService
 from app.services.machine_health import MachineHealthService
 from app.services.predictive_features import PredictiveFeatureService
@@ -16,4 +17,5 @@ __all__ = [
     "AlertThresholdService",
     "SensorService",
     "PredictiveFeatureService",
+    "HealthScoringService",
 ]
