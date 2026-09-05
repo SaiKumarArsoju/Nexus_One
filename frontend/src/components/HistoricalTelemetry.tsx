@@ -14,46 +14,56 @@ import {
   getSensors,
   getTelemetryAggregates,
 } from "../api/client";
+import {
+  DEFAULT_TELEMETRY_HISTORY_RANGE_KEY,
+  getTelemetryHistoryRange,
+  TELEMETRY_HISTORY_RANGES,
+  TELEMETRY_TREND_STABILITY_PERCENT,
+} from "../config/telemetryHistory";
 
 import type {
   SensorDiscovery,
   TelemetryAggregateBucket,
-  TelemetryAggregationBucket,
 } from "../types/api";
+import type { TelemetryHistoryRangeKey } from "../config/telemetryHistory";
 import type { TooltipContentProps } from "recharts";
 
 type HistoricalTelemetryProps = {
   machineId: string;
 };
 
-type HistoricalRangeKey = "1h" | "6h" | "24h" | "7d" | "30d";
-
-type HistoricalRange = {
-  key: HistoricalRangeKey;
-  label: string;
-  durationMs: number;
-  bucket: TelemetryAggregationBucket;
+type LoadedRequestWindow = {
+  start: string;
+  end: string;
 };
 
 type HistoricalChartDatum = TelemetryAggregateBucket & {
   timestamp: number;
 };
 
-const MINUTE_MS = 60_000;
-const HOUR_MS = 60 * MINUTE_MS;
-const DAY_MS = 24 * HOUR_MS;
+type LoadedHistory = {
+  sensorId: string;
+  rangeKey: TelemetryHistoryRangeKey;
+  buckets: TelemetryAggregateBucket[];
+  window: LoadedRequestWindow;
+};
 
-const HISTORICAL_RANGES: readonly HistoricalRange[] = [
-  { key: "1h", label: "Last 1 hour", durationMs: HOUR_MS, bucket: "1m" },
-  { key: "6h", label: "Last 6 hours", durationMs: 6 * HOUR_MS, bucket: "5m" },
-  { key: "24h", label: "Last 24 hours", durationMs: DAY_MS, bucket: "15m" },
-  { key: "7d", label: "Last 7 days", durationMs: 7 * DAY_MS, bucket: "1h" },
-  { key: "30d", label: "Last 30 days", durationMs: 30 * DAY_MS, bucket: "1h" },
-];
+type TrendDirection = "Rising" | "Falling" | "Stable";
 
-const DEFAULT_RANGE_KEY: HistoricalRangeKey = "1h";
+type WindowSummary = {
+  average: number;
+  minimum: number;
+  maximum: number;
+  readingCount: number;
+  trend: TrendDirection;
+  trendPercent: number | null;
+};
+
 const NUMBER_FORMATTER = new Intl.NumberFormat(undefined, {
   maximumFractionDigits: 2,
+});
+const TREND_FORMATTER = new Intl.NumberFormat(undefined, {
+  maximumFractionDigits: 1,
 });
 const LOCAL_TIME_ZONE = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
@@ -74,13 +84,99 @@ function formatLocalTimestamp(timestamp: number): string {
   });
 }
 
-function formatAxisTimestamp(timestamp: number, range: HistoricalRangeKey): string {
+function formatAxisTimestamp(
+  timestamp: number,
+  axisFormat: "time" | "day-time",
+): string {
   const options: Intl.DateTimeFormatOptions =
-    range === "1h" || range === "6h" || range === "24h"
+    axisFormat === "time"
       ? { hour: "2-digit", minute: "2-digit" }
-      : { month: "short", day: "numeric", hour: "2-digit" };
+      : {
+          month: "short",
+          day: "numeric",
+          hour: "2-digit",
+          minute: "2-digit",
+        };
 
   return new Date(timestamp).toLocaleString([], options);
+}
+
+function formatWindowTimestamp(timestamp: string): string {
+  return new Date(timestamp).toLocaleString([], {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    second: "2-digit",
+  });
+}
+
+function summarizeWindow(
+  chartData: HistoricalChartDatum[],
+): WindowSummary | null {
+  if (chartData.length === 0) {
+    return null;
+  }
+
+  const readingCount = chartData.reduce(
+    (total, bucket) => total + bucket.count,
+    0,
+  );
+
+  if (readingCount === 0) {
+    return null;
+  }
+
+  const average =
+    chartData.reduce(
+      (total, bucket) => total + bucket.average * bucket.count,
+      0,
+    ) / readingCount;
+  const minimum = Math.min(...chartData.map((bucket) => bucket.minimum));
+  const maximum = Math.max(...chartData.map((bucket) => bucket.maximum));
+  const firstAverage = chartData[0].average;
+  const lastAverage = chartData[chartData.length - 1].average;
+  const difference = lastAverage - firstAverage;
+  const trendPercent =
+    firstAverage === 0
+      ? null
+      : (difference / Math.abs(firstAverage)) * 100;
+  const trend: TrendDirection =
+    trendPercent !== null &&
+    Math.abs(trendPercent) < TELEMETRY_TREND_STABILITY_PERCENT
+      ? "Stable"
+      : difference > 0
+        ? "Rising"
+        : difference < 0
+          ? "Falling"
+          : "Stable";
+
+  return {
+    average,
+    minimum,
+    maximum,
+    readingCount,
+    trend,
+    trendPercent,
+  };
+}
+
+function calculateYAxisDomain(
+  summary: WindowSummary | null,
+): [number | "auto", number | "auto"] {
+  if (!summary) {
+    return ["auto", "auto"];
+  }
+
+  const spread = summary.maximum - summary.minimum;
+  const magnitude = Math.max(
+    Math.abs(summary.minimum),
+    Math.abs(summary.maximum),
+    1,
+  );
+  const padding = Math.max(spread * 0.1, magnitude * 0.01);
+
+  return [summary.minimum - padding, summary.maximum + padding];
 }
 
 function HistoricalTooltip({
@@ -109,28 +205,42 @@ function HistoricalTelemetry({ machineId }: HistoricalTelemetryProps) {
   const [sensors, setSensors] = useState<SensorDiscovery[]>([]);
   const [selectedSensorId, setSelectedSensorId] = useState("");
   const [rangeKey, setRangeKey] =
-    useState<HistoricalRangeKey>(DEFAULT_RANGE_KEY);
+    useState<TelemetryHistoryRangeKey>(
+      DEFAULT_TELEMETRY_HISTORY_RANGE_KEY,
+    );
   const [sensorRefreshVersion, setSensorRefreshVersion] = useState(0);
   const [refreshVersion, setRefreshVersion] = useState(0);
   const [sensorLoading, setSensorLoading] = useState(true);
   const [sensorError, setSensorError] = useState("");
-  const [data, setData] = useState<TelemetryAggregateBucket[]>([]);
+  const [loadedHistory, setLoadedHistory] = useState<LoadedHistory | null>(
+    null,
+  );
   const [dataLoading, setDataLoading] = useState(false);
   const [dataError, setDataError] = useState("");
 
-  const selectedRange =
-    HISTORICAL_RANGES.find((range) => range.key === rangeKey) ??
-    HISTORICAL_RANGES[0];
+  const selectedRange = getTelemetryHistoryRange(rangeKey);
   const selectedSensor = sensors.find(
     (sensor) => sensor.id === selectedSensorId,
   );
+  const currentHistory =
+    loadedHistory?.sensorId === selectedSensorId &&
+    loadedHistory.rangeKey === rangeKey
+      ? loadedHistory
+      : null;
   const chartData = useMemo<HistoricalChartDatum[]>(
     () =>
-      data.map((bucket) => ({
-        ...bucket,
-        timestamp: new Date(bucket.bucket_start).getTime(),
-      })),
-    [data],
+      (currentHistory?.buckets ?? [])
+        .map((bucket) => ({
+          ...bucket,
+          timestamp: new Date(bucket.bucket_start).getTime(),
+        }))
+        .sort((left, right) => left.timestamp - right.timestamp),
+    [currentHistory],
+  );
+  const windowSummary = useMemo(() => summarizeWindow(chartData), [chartData]);
+  const yAxisDomain = useMemo(
+    () => calculateYAxisDomain(windowSummary),
+    [windowSummary],
   );
 
   useEffect(() => {
@@ -141,7 +251,7 @@ function HistoricalTelemetry({ machineId }: HistoricalTelemetryProps) {
     setSelectedSensorId("");
     setSensorLoading(true);
     setSensorError("");
-    setData([]);
+    setLoadedHistory(null);
     setDataError("");
 
     getSensors(controller.signal)
@@ -181,7 +291,6 @@ function HistoricalTelemetry({ machineId }: HistoricalTelemetryProps) {
 
   useEffect(() => {
     if (!selectedSensorId) {
-      setData([]);
       setDataLoading(false);
       return;
     }
@@ -190,23 +299,31 @@ function HistoricalTelemetry({ machineId }: HistoricalTelemetryProps) {
     let current = true;
     const end = new Date();
     const start = new Date(end.getTime() - selectedRange.durationMs);
+    const requestWindow: LoadedRequestWindow = {
+      start: start.toISOString(),
+      end: end.toISOString(),
+    };
 
-    setData([]);
     setDataLoading(true);
     setDataError("");
 
     getTelemetryAggregates(
       {
         sensorId: selectedSensorId,
-        start: start.toISOString(),
-        end: end.toISOString(),
+        start: requestWindow.start,
+        end: requestWindow.end,
         bucket: selectedRange.bucket,
       },
       controller.signal,
     )
       .then((nextData) => {
         if (current) {
-          setData(nextData);
+          setLoadedHistory({
+            sensorId: selectedSensorId,
+            rangeKey,
+            buckets: nextData,
+            window: requestWindow,
+          });
         }
       })
       .catch((error: unknown) => {
@@ -224,7 +341,7 @@ function HistoricalTelemetry({ machineId }: HistoricalTelemetryProps) {
       current = false;
       controller.abort();
     };
-  }, [refreshVersion, selectedRange, selectedSensorId]);
+  }, [rangeKey, refreshVersion, selectedRange, selectedSensorId]);
 
   return (
     <section className="section historical-telemetry">
@@ -265,10 +382,10 @@ function HistoricalTelemetry({ machineId }: HistoricalTelemetryProps) {
               value={rangeKey}
               disabled={!selectedSensorId}
               onChange={(event) =>
-                setRangeKey(event.target.value as HistoricalRangeKey)
+                setRangeKey(event.target.value as TelemetryHistoryRangeKey)
               }
             >
-              {HISTORICAL_RANGES.map((range) => (
+              {TELEMETRY_HISTORY_RANGES.map((range) => (
                 <option key={range.key} value={range.key}>
                   {range.label}
                 </option>
@@ -315,30 +432,74 @@ function HistoricalTelemetry({ machineId }: HistoricalTelemetryProps) {
         </div>
       )}
 
-      {!sensorError && selectedSensor && dataLoading && (
-        <div className="historical-state" role="status">
-          Loading historical telemetry...
+      {!sensorError &&
+        selectedSensor &&
+        dataLoading &&
+        !currentHistory && (
+          <div className="historical-state" role="status">
+            Loading historical telemetry...
+          </div>
+        )}
+
+      {!sensorError &&
+        selectedSensor &&
+        !dataLoading &&
+        dataError &&
+        !currentHistory && (
+          <div className="historical-state error" role="alert">
+            <strong>Unable to load historical telemetry.</strong>
+            <span>{dataError}</span>
+            <button
+              className="view-all-button"
+              type="button"
+              onClick={() => setRefreshVersion((version) => version + 1)}
+            >
+              Try again
+            </button>
+          </div>
+        )}
+
+      {!sensorError && selectedSensor && currentHistory && (
+        <div className="historical-window" aria-label="Loaded historical window">
+          <span>Loaded window</span>
+          <strong>
+            {formatWindowTimestamp(currentHistory.window.start)} →{" "}
+            {formatWindowTimestamp(currentHistory.window.end)}
+          </strong>
+          <span>Local time · {LOCAL_TIME_ZONE}</span>
         </div>
       )}
 
-      {!sensorError && selectedSensor && !dataLoading && dataError && (
-        <div className="historical-state error" role="alert">
-          <strong>Unable to load historical telemetry.</strong>
-          <span>{dataError}</span>
-          <button
-            className="view-all-button"
-            type="button"
-            onClick={() => setRefreshVersion((version) => version + 1)}
-          >
-            Try again
-          </button>
+      {!sensorError && selectedSensor && currentHistory && dataLoading && (
+        <div className="historical-notice" role="status">
+          Refreshing historical telemetry. Showing the last loaded window.
         </div>
       )}
 
       {!sensorError &&
         selectedSensor &&
+        currentHistory &&
         !dataLoading &&
-        !dataError &&
+        dataError && (
+          <div className="historical-notice error" role="alert">
+            <span>
+              Refresh failed. Showing the last successfully loaded window.
+              {" "}
+              {dataError}
+            </span>
+            <button
+              className="view-all-button"
+              type="button"
+              onClick={() => setRefreshVersion((version) => version + 1)}
+            >
+              Try again
+            </button>
+          </div>
+        )}
+
+      {!sensorError &&
+        selectedSensor &&
+        currentHistory &&
         chartData.length === 0 && (
           <div className="historical-state">
             No historical telemetry found for this sensor and time range.
@@ -347,19 +508,57 @@ function HistoricalTelemetry({ machineId }: HistoricalTelemetryProps) {
 
       {!sensorError &&
         selectedSensor &&
-        !dataLoading &&
-        !dataError &&
+        currentHistory &&
         chartData.length > 0 && (
           <article className="historical-chart-card">
             <div className="historical-chart-summary">
               <div>
                 <strong>{selectedSensor.name}</strong>
                 <span>
+                  {selectedSensor.sensor_type} · {selectedSensor.unit} ·{" "}
                   {selectedRange.label} · {selectedRange.bucket} buckets
                 </span>
               </div>
               <span>{chartData.length.toLocaleString()} populated buckets</span>
             </div>
+
+            {windowSummary && (
+              <dl className="historical-metrics" aria-label="Window summary">
+                <div>
+                  <dt>Average</dt>
+                  <dd>
+                    {formatValue(windowSummary.average, selectedSensor.unit)}
+                  </dd>
+                </div>
+                <div>
+                  <dt>Minimum</dt>
+                  <dd>
+                    {formatValue(windowSummary.minimum, selectedSensor.unit)}
+                  </dd>
+                </div>
+                <div>
+                  <dt>Maximum</dt>
+                  <dd>
+                    {formatValue(windowSummary.maximum, selectedSensor.unit)}
+                  </dd>
+                </div>
+                <div>
+                  <dt>Readings</dt>
+                  <dd>{windowSummary.readingCount.toLocaleString()}</dd>
+                </div>
+                <div>
+                  <dt>Trend</dt>
+                  <dd className={`trend-${windowSummary.trend.toLowerCase()}`}>
+                    {windowSummary.trend}
+                    {windowSummary.trendPercent === null
+                      ? " · percentage unavailable"
+                      : ` ${TREND_FORMATTER.format(
+                          Math.abs(windowSummary.trendPercent),
+                        )}%`}
+                  </dd>
+                </div>
+              </dl>
+            )}
 
             <div className="historical-chart-container">
               <ResponsiveContainer width="100%" height="100%">
@@ -374,12 +573,13 @@ function HistoricalTelemetry({ machineId }: HistoricalTelemetryProps) {
                     domain={["dataMin", "dataMax"]}
                     scale="time"
                     tickFormatter={(timestamp: number) =>
-                      formatAxisTimestamp(timestamp, rangeKey)
+                      formatAxisTimestamp(timestamp, selectedRange.axisFormat)
                     }
                     stroke="#64748b"
-                    minTickGap={28}
+                    minTickGap={selectedRange.axisMinTickGap}
                   />
                   <YAxis
+                    domain={yAxisDomain}
                     stroke="#64748b"
                     tickFormatter={(value: number) =>
                       NUMBER_FORMATTER.format(value)

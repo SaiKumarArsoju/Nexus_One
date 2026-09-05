@@ -616,6 +616,44 @@ h1 {
   min-height: 43px;
 }
 
+.historical-window {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin-bottom: 12px;
+  color: #64748b;
+  font-size: 12px;
+}
+
+.historical-window strong {
+  color: #cbd5e1;
+  font-weight: 600;
+}
+
+.historical-notice {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 12px;
+  padding: 10px 12px;
+  border: 1px solid rgb(96 165 250 / 25%);
+  border-radius: 10px;
+  background: rgb(96 165 250 / 8%);
+  color: #bfdbfe;
+  font-size: 13px;
+}
+
+.historical-notice.error {
+  border-color: rgb(239 68 68 / 30%);
+  background: rgb(239 68 68 / 8%);
+  color: #fca5a5;
+}
+
+.historical-notice .view-all-button {
+  flex: none;
+}
+
 .historical-state {
   display: flex;
   min-height: 280px;
@@ -671,6 +709,50 @@ h1 {
   font-size: 12px;
 }
 
+.historical-metrics {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(110px, 1fr));
+  gap: 10px;
+  margin: 0 0 22px;
+}
+
+.historical-metrics div {
+  min-width: 0;
+  padding: 12px 14px;
+  border: 1px solid #1e293b;
+  border-radius: 10px;
+  background: #0f172a;
+}
+
+.historical-metrics dt {
+  margin-bottom: 6px;
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.historical-metrics dd {
+  margin: 0;
+  color: #f8fafc;
+  font-size: 15px;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.historical-metrics .trend-rising {
+  color: #fbbf24;
+}
+
+.historical-metrics .trend-falling {
+  color: #93c5fd;
+}
+
+.historical-metrics .trend-stable {
+  color: #cbd5e1;
+}
+
 .historical-chart-container {
   width: 100%;
   height: 360px;
@@ -711,9 +793,23 @@ h1 {
     width: 100%;
     min-width: 0;
   }
+
+  .historical-metrics {
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  }
 }
 
 @media (max-width: 700px) {
+  .historical-window,
+  .historical-notice {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .historical-notice .view-all-button {
+    width: 100%;
+  }
+
   .historical-chart-summary {
     flex-direction: column;
   }
