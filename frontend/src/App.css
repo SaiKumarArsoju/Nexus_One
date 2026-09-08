@@ -601,6 +601,188 @@ h1 {
   min-width: 190px;
 }
 
+.maintenance-health {
+  display: grid;
+  gap: 18px;
+}
+
+.maintenance-heading,
+.maintenance-controls,
+.maintenance-summary,
+.maintenance-metadata,
+.maintenance-sensor-card header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.maintenance-heading h2,
+.maintenance-sensors h3,
+.maintenance-reasons h3,
+.maintenance-penalties h4,
+.maintenance-sensor-reasons h4 {
+  margin: 0;
+}
+
+.maintenance-disclaimer,
+.maintenance-confidence-note {
+  max-width: 720px;
+  color: #94a3b8;
+  line-height: 1.6;
+}
+
+.maintenance-controls label {
+  display: grid;
+  gap: 6px;
+  color: #94a3b8;
+  font-size: 12px;
+}
+
+.maintenance-controls select {
+  min-width: 180px;
+  padding: 10px 12px;
+  border: 1px solid #334155;
+  border-radius: 8px;
+  background: #0f172a;
+  color: #e2e8f0;
+}
+
+.maintenance-score-card,
+.maintenance-summary-grid div,
+.maintenance-sensor-card {
+  border: 1px solid #1e293b;
+  border-radius: 14px;
+  background: #111827;
+}
+
+.maintenance-score-card {
+  display: grid;
+  min-width: 230px;
+  gap: 10px;
+  padding: 20px;
+}
+
+.maintenance-score-card > span:first-child,
+.maintenance-sensor-card header span,
+.maintenance-summary-grid dt,
+.maintenance-sensor-meta dt {
+  color: #64748b;
+  font-size: 11px;
+  text-transform: uppercase;
+}
+
+.maintenance-score-card > strong {
+  font-size: 28px;
+}
+
+.maintenance-band {
+  width: fit-content;
+  padding: 4px 8px;
+  border-radius: 999px;
+  color: #cbd5e1;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.maintenance-band.healthy { background: rgb(34 197 94 / 15%); color: #86efac; }
+.maintenance-band.watch { background: rgb(245 158 11 / 15%); color: #fcd34d; }
+.maintenance-band.attention { background: rgb(239 68 68 / 15%); color: #fca5a5; }
+.maintenance-band.insufficient-data { background: rgb(100 116 139 / 18%); }
+
+.maintenance-summary-grid,
+.maintenance-sensor-meta {
+  display: grid;
+  flex: 1;
+  grid-template-columns: repeat(auto-fit, minmax(145px, 1fr));
+  gap: 10px;
+  margin: 0;
+}
+
+.maintenance-summary-grid div,
+.maintenance-sensor-meta div {
+  min-width: 0;
+  padding: 14px;
+}
+
+.maintenance-summary-grid dd,
+.maintenance-sensor-meta dd {
+  margin: 7px 0 0;
+  overflow-wrap: anywhere;
+  font-weight: 700;
+}
+
+.maintenance-metadata {
+  color: #94a3b8;
+  font-size: 12px;
+  flex-wrap: wrap;
+}
+
+.maintenance-reasons,
+.maintenance-penalties,
+.maintenance-sensor-reasons {
+  display: grid;
+  gap: 10px;
+}
+
+.maintenance-reasons ul,
+.maintenance-sensor-reasons ul {
+  margin: 0;
+  padding-left: 20px;
+  color: #cbd5e1;
+  line-height: 1.6;
+}
+
+.maintenance-sensors {
+  display: grid;
+  gap: 14px;
+}
+
+.maintenance-sensor-card {
+  display: grid;
+  min-width: 0;
+  gap: 16px;
+  padding: 18px;
+}
+
+.maintenance-sensor-card.concerning { border-color: rgb(245 158 11 / 55%); }
+.maintenance-sensor-card header > div { display: grid; gap: 6px; min-width: 0; }
+.maintenance-sensor-card header strong { overflow-wrap: anywhere; }
+.maintenance-sensor-score { justify-items: end; text-align: right; }
+.maintenance-sensor-meta div { border-radius: 10px; background: #0f172a; }
+.maintenance-penalties dl { display: grid; gap: 7px; margin: 0; }
+.maintenance-penalties dl div { display: flex; justify-content: space-between; gap: 16px; }
+.maintenance-penalties dd { margin: 0; color: #fbbf24; font-weight: 700; white-space: nowrap; }
+
+.maintenance-state,
+.maintenance-notice {
+  padding: 14px;
+  border: 1px solid #334155;
+  border-radius: 10px;
+  color: #cbd5e1;
+}
+
+.maintenance-state { display: grid; justify-items: center; gap: 12px; min-height: 120px; align-content: center; }
+.maintenance-state.error,
+.maintenance-notice.error { border-color: rgb(239 68 68 / 40%); color: #fca5a5; }
+
+@media (max-width: 1050px) {
+  .maintenance-heading,
+  .maintenance-summary { flex-direction: column; }
+  .maintenance-controls,
+  .maintenance-score-card { width: 100%; }
+  .maintenance-controls label { flex: 1; }
+  .maintenance-controls select { width: 100%; }
+}
+
+@media (max-width: 700px) {
+  .maintenance-controls,
+  .maintenance-sensor-card header { flex-direction: column; width: 100%; }
+  .maintenance-controls .view-all-button { width: 100%; }
+  .maintenance-sensor-score { justify-items: start; text-align: left; }
+  .maintenance-penalties dl div { align-items: flex-start; }
+}
+
 .historical-controls label:first-child .historical-select {
   min-width: 320px;
 }

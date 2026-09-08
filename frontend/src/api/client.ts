@@ -5,6 +5,8 @@ import type {
   MachineDetail,
   MachineFleetItem,
   MachineTrends,
+  MachineHealthScore,
+  HealthScoreWindow,
   SensorDiscovery,
   SensorType,
   TelemetryAggregateBucket,
@@ -53,6 +55,29 @@ export function getMachineTrends(
   machineId: string,
 ): Promise<MachineTrends> {
   return request<MachineTrends>(`/machines/${machineId}/trends`);
+}
+
+type MachineHealthScoreQuery = {
+  machineId: string;
+  window: HealthScoreWindow;
+  end?: string;
+  signal: AbortSignal;
+};
+
+export function getMachineHealthScore({
+  machineId,
+  window,
+  end,
+  signal,
+}: MachineHealthScoreQuery): Promise<MachineHealthScore> {
+  const query = new URLSearchParams({ window });
+  if (end) {
+    query.set("end", end);
+  }
+  return request<MachineHealthScore>(
+    `/machines/${machineId}/health-score?${query.toString()}`,
+    { signal },
+  );
 }
 
 export function getSensors(signal?: AbortSignal): Promise<SensorDiscovery[]> {

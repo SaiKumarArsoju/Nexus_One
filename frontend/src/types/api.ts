@@ -119,3 +119,49 @@ export type AlertChangedEventData = {
   machine_id: string;
   status: AlertStatus;
 };
+
+export type HealthScoreWindow = "1h" | "6h" | "24h" | "7d";
+export type HealthBand = "HEALTHY" | "WATCH" | "ATTENTION" | "INSUFFICIENT_DATA";
+export type HealthConfidence = "NONE" | "LOW" | "MEDIUM" | "HIGH";
+export type FeatureCoverageStatus = "NO_DATA" | "SPARSE" | "SUFFICIENT";
+
+export type SensorHealthPenalty = {
+  threshold_proximity: number;
+  mean_level: number;
+  exceedance: number;
+  trend: number;
+  variability: number;
+};
+
+export type SensorHealthScore = {
+  sensor_id: string;
+  sensor_name: string;
+  sensor_type: SensorType;
+  unit: string;
+  health_score: number | null;
+  health_band: HealthBand;
+  confidence: HealthConfidence;
+  threshold_value: number;
+  component_penalties: SensorHealthPenalty;
+  reasons: string[];
+  coverage_status: FeatureCoverageStatus;
+};
+
+export type MachineHealthScore = {
+  indicator_type: string;
+  feature_version: string;
+  scoring_version: string;
+  machine_id: string;
+  window: HealthScoreWindow;
+  window_start: string;
+  window_end: string;
+  health_score: number | null;
+  health_band: HealthBand;
+  confidence: HealthConfidence;
+  scored_sensor_count: number;
+  total_sensor_count: number;
+  most_concerning_sensor_id: string | null;
+  lowest_sensor_score: number | null;
+  sensor_scores: SensorHealthScore[];
+  reasons: string[];
+};

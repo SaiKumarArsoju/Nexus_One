@@ -3,6 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 
 import MetricCard from "../components/MetricCard";
 import HistoricalTelemetry from "../components/HistoricalTelemetry";
+import MaintenanceHealth from "../components/MaintenanceHealth";
 import TrendChart from "../components/TrendChart";
 
 import type {
@@ -214,6 +215,8 @@ function MachineDetailPage({
           </div>
         )}
       </section>
+
+      <MaintenanceHealth key={machine.id} machineId={machine.id} />
 
       <HistoricalTelemetry
         key={machine.id}
