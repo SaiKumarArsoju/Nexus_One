@@ -1,3 +1,4 @@
+from math import isfinite
 from uuid import UUID
 
 import pytest
@@ -168,6 +169,80 @@ def test_reasons_are_deterministic_prioritized_and_bounded():
     assert first.reasons == second.reasons
     assert len(first.reasons) == 5
     assert first.reasons[0].startswith("100.0% of readings exceeded")
+    assert first.reasons[-1] == "Only 3 readings were available; confidence is low."
+
+
+@pytest.mark.parametrize(
+    ("penalty", "breakpoints"),
+    [
+        (threshold_proximity_penalty, [0.8, 0.800001, 1, 1.000001, 1.5, 1.500001]),
+        (mean_level_penalty, [0.7, 0.700001, 1, 1.000001, 1.5, 1.500001]),
+    ],
+)
+def test_ratio_penalties_are_continuous_monotonic_and_bounded(penalty, breakpoints):
+    values = [penalty(value) for value in breakpoints]
+
+    assert values == sorted(values)
+    assert values[0] == 0
+    assert values[-1] == values[-2]
+    assert all(isfinite(value) for value in values)
+
+
+@pytest.mark.parametrize(
+    ("values", "penalty"),
+    [
+        ([5, 5.000001, 50, 50.000001], trend_penalty),
+        ([5, 5.0001, 25, 25.0001], lambda value: variability_penalty(value, 100)),
+    ],
+)
+def test_trend_and_variability_breakpoints_are_continuous_and_bounded(values, penalty):
+    penalties = [penalty(value) for value in values]
+
+    assert penalties == sorted(penalties)
+    assert penalties[0] == 0
+    assert penalties[-1] == penalties[-2]
+    assert all(isfinite(value) for value in penalties)
+
+
+@pytest.mark.parametrize(
+    ("field", "low", "high"),
+    [
+        ("maximum_ratio", 0.8, 1.2),
+        ("mean_ratio", 0.7, 1.2),
+        ("exceedance_fraction", 0, 0.5),
+        ("percent_change", 5, 50),
+        ("standard_deviation", 5, 25),
+    ],
+)
+def test_increasing_one_penalized_feature_never_improves_score(field, low, high):
+    baseline = score_sensor(_features(**{field: low}))
+    increased = score_sensor(_features(**{field: high}))
+
+    assert baseline.health_score is not None
+    assert increased.health_score is not None
+    assert increased.health_score <= baseline.health_score
+
+
+def test_threshold_equality_penalizes_proximity_but_not_exceedance():
+    result = score_sensor(_features(maximum_ratio=1, exceedance_fraction=0))
+
+    assert result.penalties.threshold_proximity == 10
+    assert result.penalties.exceedance == 0
+
+
+def test_unusual_finite_ratios_remain_finite_and_bounded():
+    result = score_sensor(
+        _features(
+            maximum_ratio=-10,
+            mean_ratio=-5,
+            percent_change=-10_000,
+            standard_deviation=10_000,
+        )
+    )
+
+    assert result.health_score is not None
+    assert isfinite(result.health_score)
+    assert 0 <= result.health_score <= 100
 
 
 def test_evaluation_fixtures_are_monotonic_and_descriptive():

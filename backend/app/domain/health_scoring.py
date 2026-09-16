@@ -271,10 +271,13 @@ def _sensor_reasons(
         for penalty, _, reason in sorted(candidates, key=lambda item: (-item[0], item[1]))
         if penalty > 0
     ]
+    sparse_reason = None
     if features.coverage_status == FeatureCoverageStatus.SPARSE:
-        reasons.append(f"Only {features.reading_count} readings were available; confidence is low.")
+        sparse_reason = f"Only {features.reading_count} readings were available; confidence is low."
     if not reasons:
         reasons.append("Telemetry remained comfortably within configured limits.")
+    if sparse_reason is not None:
+        return tuple(reasons[: MAX_SENSOR_REASONS - 1] + [sparse_reason])
     return tuple(reasons[:MAX_SENSOR_REASONS])
 
 

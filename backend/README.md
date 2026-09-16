@@ -104,7 +104,9 @@ coverage rather than machine health.
 Scoring version `v1` starts at 100 and subtracts capped, visible penalties for threshold proximity,
 mean level, exact reading-level exceedance fraction, absolute trend magnitude, and
 threshold-normalized variability. A machine score blends 70% of the equal-weight sensor average
-with 30% of the lowest sensor score. Deterministic reasons explain the material contributions.
+with 30% of the lowest sensor score. Deterministic reasons explain the material contributions;
+for sparse sensors, the low-confidence coverage reason is always retained within the five-reason
+limit.
 
 This indicator is not machine learning, failure probability, remaining useful life, or a predicted
 breakdown date. Scores are not persisted and are not recalculated through realtime events.

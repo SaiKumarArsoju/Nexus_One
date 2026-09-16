@@ -165,11 +165,30 @@ def test_supported_windows_share_exact_feature_and_score_bounds(
     sensor = _add_sensor(db, test_machine, name="Sensor")
     _add_values(db, sensor, [50])
 
-    payload = _query(client, test_machine, window=window).json()
+    score_response = _query(client, test_machine, window=window)
+    feature_response = client.get(
+        f"/api/v1/machines/{test_machine.id}/predictive-features",
+        params={"end": SCORE_END.isoformat(), "window": window},
+    )
+    assert score_response.status_code == 200
+    assert feature_response.status_code == 200
+    payload = score_response.json()
+    feature_payload = feature_response.json()
 
     assert payload["window"] == window
     assert payload["window_start"] == expected_start
     assert payload["window_end"] == "2026-08-28T12:00:00Z"
+    assert (
+        payload["window"],
+        payload["window_start"],
+        payload["window_end"],
+        payload["feature_version"],
+    ) == (
+        feature_payload["window"],
+        feature_payload["window_start"],
+        feature_payload["window_end"],
+        feature_payload["feature_version"],
+    )
 
 
 def test_default_window_and_versions_are_explicit(client, test_machine):
@@ -258,6 +277,25 @@ def test_explicit_historical_request_is_deterministic_and_finite(
         "prediction",
     }
     assert forbidden_fields.isdisjoint(payload)
+
+
+@pytest.mark.parametrize(
+    ("end", "expected_end"),
+    [
+        ("2026-08-28T17:30:00+05:30", "2026-08-28T12:00:00Z"),
+        ("2026-08-28T08:00:00-04:00", "2026-08-28T12:00:00Z"),
+        ("2026-11-01T01:30:00-05:00", "2026-11-01T06:30:00Z"),
+    ],
+    ids=["positive-offset", "negative-offset", "dst-adjacent"],
+)
+def test_aware_end_offsets_normalize_to_utc(client, test_machine, end, expected_end):
+    response = client.get(
+        f"/api/v1/machines/{test_machine.id}/health-score",
+        params={"end": end, "window": "1h"},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["window_end"] == expected_end
 
 
 def test_machine_reasons_are_deterministic_and_descriptive(client, db, test_machine):
