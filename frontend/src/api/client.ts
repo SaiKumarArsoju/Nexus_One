@@ -6,6 +6,7 @@ import type {
   MachineFleetItem,
   MachineTrends,
   MachineHealthScore,
+  MachineMaintenanceAssessment,
   HealthScoreWindow,
   SensorDiscovery,
   SensorType,
@@ -76,6 +77,22 @@ export function getMachineHealthScore({
   }
   return request<MachineHealthScore>(
     `/machines/${machineId}/health-score?${query.toString()}`,
+    { signal },
+  );
+}
+
+export function getMachineMaintenanceAssessment({
+  machineId,
+  window,
+  end,
+  signal,
+}: MachineHealthScoreQuery): Promise<MachineMaintenanceAssessment> {
+  const query = new URLSearchParams({ window });
+  if (end) {
+    query.set("end", end);
+  }
+  return request<MachineMaintenanceAssessment>(
+    `/machines/${machineId}/maintenance-assessment?${query.toString()}`,
     { signal },
   );
 }

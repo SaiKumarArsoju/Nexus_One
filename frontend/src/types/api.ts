@@ -165,3 +165,61 @@ export type MachineHealthScore = {
   sensor_scores: SensorHealthScore[];
   reasons: string[];
 };
+
+export type MaintenancePriority =
+  | "NONE"
+  | "LOW"
+  | "MEDIUM"
+  | "HIGH"
+  | "CRITICAL"
+  | "INSUFFICIENT_DATA";
+
+export type MaintenanceEvidenceType =
+  | "CRITICAL_ALERT"
+  | "WARNING_ALERT"
+  | "LOW_HEALTH_SCORE"
+  | "CONCERNING_SENSOR"
+  | "THRESHOLD_EXCEEDANCE"
+  | "LOW_CONFIDENCE"
+  | "MISSING_TELEMETRY";
+
+export type RecommendedMaintenanceAction =
+  | "CONTINUE_MONITORING"
+  | "REVIEW_OPERATING_CONDITIONS"
+  | "INSPECT_MACHINE"
+  | "INSPECT_SENSOR_OR_COMPONENT"
+  | "SCHEDULE_MAINTENANCE_REVIEW"
+  | "IMMEDIATE_OPERATIONAL_REVIEW"
+  | "VERIFY_TELEMETRY";
+
+export type MaintenanceEvidence = {
+  type: MaintenanceEvidenceType;
+  message: string;
+  sensor_id: string | null;
+  sensor_name: string | null;
+  alert_id: string | null;
+  severity: AlertSeverity | null;
+};
+
+export type MachineMaintenanceAssessment = {
+  indicator_type: string;
+  feature_version: string;
+  scoring_version: string;
+  maintenance_policy_version: string;
+  machine_id: string;
+  window: HealthScoreWindow;
+  window_start: string;
+  window_end: string;
+  health_score: number | null;
+  health_band: HealthBand;
+  confidence: HealthConfidence;
+  maintenance_priority: MaintenancePriority;
+  unresolved_alert_count: number;
+  critical_alert_count: number;
+  warning_alert_count: number;
+  most_concerning_sensor_id: string | null;
+  most_concerning_sensor_name: string | null;
+  evidence: MaintenanceEvidence[];
+  recommended_actions: RecommendedMaintenanceAction[];
+  reasons: string[];
+};
