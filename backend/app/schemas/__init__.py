@@ -17,6 +17,10 @@ from app.schemas.machine import (
     MachineTrendsResponse,
     TelemetryTrendPoint,
 )
+from app.schemas.maintenance import (
+    MachineMaintenanceAssessmentResponse,
+    MaintenanceEvidenceResponse,
+)
 from app.schemas.predictive import (
     MachinePredictiveFeaturesResponse,
     SensorPredictiveFeatureResponse,
@@ -52,4 +56,6 @@ __all__ = [
     "MachineHealthScoreResponse",
     "SensorHealthPenaltyResponse",
     "SensorHealthScoreResponse",
+    "MachineMaintenanceAssessmentResponse",
+    "MaintenanceEvidenceResponse",
 ]

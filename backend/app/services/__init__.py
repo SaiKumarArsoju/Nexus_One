@@ -4,6 +4,7 @@ from app.services.dashboard import DashboardService
 from app.services.health_scoring import HealthScoringService
 from app.services.machine import MachineService
 from app.services.machine_health import MachineHealthService
+from app.services.maintenance_intelligence import MaintenanceIntelligenceService
 from app.services.predictive_features import PredictiveFeatureService
 from app.services.sensor import SensorService
 from app.services.telemetry import TelemetryService
@@ -18,4 +19,5 @@ __all__ = [
     "SensorService",
     "PredictiveFeatureService",
     "HealthScoringService",
+    "MaintenanceIntelligenceService",
 ]

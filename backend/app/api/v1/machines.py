@@ -17,12 +17,57 @@ from app.schemas import (
     MachineDetailResponse,
     MachineFleetItemResponse,
     MachineHealthScoreResponse,
+    MachineMaintenanceAssessmentResponse,
     MachinePredictiveFeaturesResponse,
     MachineTrendsResponse,
 )
-from app.services import HealthScoringService, MachineService, PredictiveFeatureService
+from app.services import (
+    HealthScoringService,
+    MachineService,
+    MaintenanceIntelligenceService,
+    PredictiveFeatureService,
+)
 
 router = APIRouter(prefix="/api/v1", tags=["Machines"])
+
+
+@router.get(
+    "/machines/{machine_id}/maintenance-assessment",
+    response_model=MachineMaintenanceAssessmentResponse,
+)
+def get_machine_maintenance_assessment(
+    machine_id: UUID,
+    db: Annotated[Session, Depends(get_db)],
+    window: Annotated[
+        PredictiveFeatureWindow,
+        Query(description="Controlled lookback window"),
+    ] = PredictiveFeatureWindow.TWENTY_FOUR_HOURS,
+    end: Annotated[
+        AwareDatetime | None,
+        Query(description="Exclusive timezone-aware assessment-window end"),
+    ] = None,
+) -> MachineMaintenanceAssessmentResponse:
+    try:
+        return MaintenanceIntelligenceService(db).get_machine_assessment(
+            machine_id=machine_id,
+            window=window,
+            end=end,
+        )
+    except LookupError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=str(exc)
+        ) from exc
+    except (
+        AlertThresholdConfigurationError,
+        PredictiveFeatureConfigurationError,
+        PredictiveFeatureDataError,
+        HealthScoringDataError,
+    ) as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(exc)
+        ) from exc
 
 
 @router.get(

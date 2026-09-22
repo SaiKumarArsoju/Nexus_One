@@ -111,6 +111,27 @@ limit.
 This indicator is not machine learning, failure probability, remaining useful life, or a predicted
 breakdown date. Scores are not persisted and are not recalculated through realtime events.
 
+## Maintenance intelligence
+
+The backend combines the deterministic maintenance health indicator with current unresolved
+operational alerts to produce an on-demand maintenance assessment:
+
+```text
+GET /api/v1/machines/<machine_id>/maintenance-assessment?window=24h&end=<ISO8601>
+```
+
+Maintenance policy version `v1` returns one of `NONE`, `LOW`, `MEDIUM`, `HIGH`, `CRITICAL`, or
+`INSUFFICIENT_DATA`. Active and acknowledged alerts remain unresolved evidence; resolved alerts do
+not affect current priority. Critical alerts establish critical priority even when telemetry is
+missing, while health bands and warning alerts drive the lower priority levels. Telemetry
+confidence remains separate from machine condition and affects the explanation, not an arbitrary
+numeric priority score.
+
+Evidence, reasons, and controlled recommended actions are deterministic policy output. They are
+broad operational guidance for operator or technician review—not a diagnosis, trained-model
+prediction, failure probability, remaining useful life estimate, or replacement for professional
+judgment. Assessments are not persisted and do not create polling or realtime events.
+
 ## Development SSE infrastructure
 
 The backend exposes a process-local Server-Sent Events stream for development:

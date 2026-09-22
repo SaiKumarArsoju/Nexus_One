@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import case, select
 from sqlalchemy.orm import Session
 
 from app.models import Alert, AlertSeverity, AlertStatus, Machine
@@ -53,6 +53,18 @@ class AlertRepository:
         )
 
         return self.db.scalar(statement)
+
+    def get_unresolved_alerts_for_machine(self, machine_id: UUID) -> list[Alert]:
+        severity_order = case((Alert.severity == AlertSeverity.CRITICAL, 0), else_=1)
+        statement = (
+            select(Alert)
+            .where(
+                Alert.machine_id == machine_id,
+                Alert.status.in_([AlertStatus.ACTIVE, AlertStatus.ACKNOWLEDGED]),
+            )
+            .order_by(severity_order, Alert.created_at.desc(), Alert.id)
+        )
+        return list(self.db.scalars(statement))
 
     def get_alert_history(self):
         statement = (
